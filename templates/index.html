@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Note taker App</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <h1>Howdy! Welcome to My Note Taker Web App</h1>
+    <p>This is my note-taking application built with Flask and FastAPI.</p>
+    <p>Use the AI features to generate notes or summaries based on your notes.</p>
+    <form action="/add" method="get">
+      <label for="item">Type your note:</label>
+      <input type="text" id="item" name="item">
+       <button type="submit">add a new note</button>
+       </form>
+      <showNotes>
+        {% for note in noteslist %}
+          <p>{{ note.item }} - {% if note.completed %}&#9989;{% else %}&#10060;{% endif %}
+            <form action="{{ url_for('delete', note=note.item) }}" method="POST" style="display: inline;">
+                <!-- Button to submit the form and delete the todo item -->
+                <button type="submit">Delete</button>
+            </form>
+            <form action="{{ url_for('completed', note=note.item) }}" method="POST" style="display: inline;">
+                <button type="submit">Mark as Completed</button>
+            </form>
+            <form action="{{ url_for('notcompleted', note=note.item) }}" method="POST" style="display: inline;">
+                <button type="submit">Mark as Not Completed</button>
+            </form>
+          </p>
+        {% endfor %}
+        <p>AI Response: {{ ai_response }}</p>
+      </showNotes>
+  </body>
+</html>
