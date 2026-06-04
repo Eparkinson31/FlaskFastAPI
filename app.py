@@ -1,27 +1,112 @@
 from pyexpat.errors import messages
 from pathlib import Path
+from wsgiref import headers
 from flask_cors import CORS, cross_origin
 from urllib import response
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask import Flask, request, jsonify, render_template, redirect, url_for,Response
+from bs4 import BeautifulSoup
+#import asyncio
+#from playwright.async_api import async_playwright
 #from supabase import create_client, Client
 import json
 import sys
+from numpy import rint
 import ollama
 import os
- 
+import osmnx as ox
+import pandas as pd
+import requests
+
 app = Flask(__name__)
 cors = CORS(app)
 noteslist = []
 app.config['CORS_HEADERS'] = 'Content-Type'
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+'''
+ async def get_pub_reviews(pub_name, address):
+    
+    async with async_playwright() as playwright:
+        browser = await playwright.chromium.launch(headless=True)
+        page = await browser.new_page()
+
+        search_query = f"{pub_name} {address} reviews"
+        await page.goto(f"https://www.google.com/search?q={search_query}")
+        # Here you would add code to scrape the reviews from the search results page
+        # This is a placeholder for demonstration purposes
+        try:
+            await page.wait_for_selector('.review-content-class', timeout=5000)
+            reviews = await page.eval_on_selector_all('.review-content-class', 
+                                                     "elements => elements.map(e => e.innerText)")
+            return reviews
+        except Exception as e:
+            print(f"Could not retrieve reviews for {pub_name}: {e}")
+            return []
+        finally:
+            await browser.close()
+# Example Usage
+# reviews = await get_pub_reviews("The Flask", "Highgate, London")
+''' 
+
+@app.route("/publist")
+def publist():
+    allpubs = ox.features_from_place("London, England", tags={"amenity": "pub"})
+    pubs = allpubs[
+        (allpubs["drink:guinness"] == "yes")
+    ]
+    return Response(pubs.to_json(), mimetype="application/json") 
+
+@app.route("/location")
+def location():
+    url = "https://en.wikipedia.org/wiki/List_of_areas_of_London"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    html = requests.get(url, headers=headers).text
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    areas = []
+
+    for link in soup.select(".navbox a"):
+        name = link.get_text(strip=True)
+
+        if len(name) > 2:
+            areas.append(name)
+
+    # Remove duplicates and sort alphabetically
+    areas = sorted(set(areas))
+    print(f"Found {len(areas)} areas")
+    print(areas[:10])
+
+    return jsonify(areas)
+
+
+
+    #return Response(locations.to_json(), mimetype="application/json")
+
+
+@app.route("/reviews")
+async def reviews():
+
+    reviews = await get_pub_reviews("The Flask", "Highgate, London")
+    return jsonify(reviews)
+    
+
 @app.route("/test")
 def test():
     return "Test route is working!"
 
+# The home route of the Flask application. When a user accesses the root URL ("/"),
+# this function is called. It constructs a prompt for the AI model that includes instructions 
+# for summarizing the user's tasks based on the current notes list. It then calls the callai function 
+# with this prompt to get the AI's response, which is expected to be a summary of the tasks. Finally,
+# it renders the "index.html" template, passing in the current notes list and the AI's response so that they
+# can be displayed on the webpage.
 @app.route("/")
-def home():
-    # prompt = "Summarize the following notes: " + json.dumps(noteslist)  #Opens the homepage and creates a prompt asking the AI to summarize the notes.  
+def home():  
     prompt = "You are organising a todo list for the user. Your role is to provide them with an easy, human readable summary of their tasks. Given these tasks, summarise them in a concise, human friendly manner. Use a conversational tone. If there are no tasks, state 'No remaining tasks, hooray!'" + json.dumps(noteslist)  #Opens the homepage and creates a prompt asking the AI to summarize the notes.  
     ai_response = callai(prompt)  # Call the AI function with a prompt
     return render_template("index.html", noteslist=noteslist, ai_response=ai_response)  #Sends the notes and AI response to the index.html page so they can be displayed on the website.
@@ -66,8 +151,7 @@ def notcompleted(note):
     # Redirect to the list of todos after marking as not completed
     return redirect(url_for('home'))
 
-@app.route('/ai', methods=['GET'])
-# Specific function for the website to call the AI model, which can be used in the future for more complex interactions
+@app.route('/ai', methods=['GET']) # Specific function for the website to call the AI model, which can be used in the future for more complex interactions
 def ai():
     prompt = request.args.get('prompt', 'The prompt is empty')
     ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
@@ -97,6 +181,7 @@ def list_files(path: str) -> str: # A function that takes a directory path as in
     if not p.is_dir():
         return f"Error: not a directory: {path}"
     return "\n".join(sorted(x.name for x in p.iterdir())[:200])
+
 def callai(user_prompt: str) -> str: # A function that takes a user prompt as input and calls the AI model with that prompt, along with the defined tools. It constructs a conversation with a system message that instructs the AI to be a careful local assistant and to use tools when needed, and a user message that contains the user's prompt. It then sends this conversation to the AI model and returns the AI's response content as a string. The tools defined in this function can be used by the AI model to perform specific tasks like addition, reading files, or listing files when generating its response.
     tools = [ # A list of tools that the AI model can use when generating its response. Each tool is defined with a type of "function" and includes a name, description, and parameters that specify the input required for that tool. The AI model can call these tools when it needs to perform specific actions as part of its response generation.
     {
