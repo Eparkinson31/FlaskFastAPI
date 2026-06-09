@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for,Re
 from bs4 import BeautifulSoup
 #import asyncio
 #from playwright.async_api import async_playwright
-#from supabase import create_client, Client
+from supabase import create_client, Client
 import json
 import sys
 from numpy import rint
@@ -23,6 +23,12 @@ noteslist = []
 app.config['CORS_HEADERS'] = 'Content-Type'
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co"
+SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M"
+databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY))
+
 '''
  async def get_pub_reviews(pub_name, address):
     
@@ -47,6 +53,10 @@ if __name__ == '__main__':
 # Example Usage
 # reviews = await get_pub_reviews("The Flask", "Highgate, London")
 ''' 
+@app.route("/allsavedpubs")
+def allsavedpubs():
+    result = databaseClient.table("SavedPubs").select("*").execute()
+    return jsonify(result.data)
 
 @app.route("/publist")
 def publist():
