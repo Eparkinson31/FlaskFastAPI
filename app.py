@@ -53,6 +53,14 @@ databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY))
 # Example Usage
 # reviews = await get_pub_reviews("The Flask", "Highgate, London")
 ''' 
+@app.route("/chat", methods=["POST"]) #Creates a route for getting the AI response, which takes the current notes list as input and returns the AI's summary of the notes.
+def chat():
+    conversation_history = request.get_json()
+    response = client.chat(  # Calls the chat method of the AI client, passing in the model to use, the conversation messages, and the available tools. The AI model will process this information and generate a response based on the user's prompt and the system instructions, potentially using the tools if it determines that they are needed to generate an appropriate response. The response from the AI model is expected to include a message with content that can be returned to the user.
+    model=MODEL, messages=conversation_history) 
+    conversation_history.append(response.message.model_dump())
+    return jsonify(conversation_history)
+
 @app.route("/allsavedpubs")
 def allsavedpubs():
     result = databaseClient.table("SavedPubs").select("*").execute()
