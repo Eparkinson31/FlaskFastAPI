@@ -74,6 +74,12 @@ def publist():
     ]
     return Response(pubs.to_json(), mimetype="application/json") 
 
+@app.route("/createprofile", methods=["POST"])
+def createprofile():
+    profile = request.get_json()
+    result = databaseClient.table("Profile").insert(profile).execute()
+    return jsonify(result.data)
+
 @app.route("/location")
 def location():
     url = "https://en.wikipedia.org/wiki/List_of_areas_of_London"
