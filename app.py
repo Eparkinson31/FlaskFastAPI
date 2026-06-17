@@ -80,6 +80,17 @@ def createprofile():
     result = databaseClient.table("Profile").insert(profile).execute()
     return jsonify(result.data)
 
+@app.route("/updateprofile", methods=["PUT"])
+def updateprofile():
+    update = request.get_json()
+    result = databaseClient.table("Profile").update(update["data"]).eq("id",update["id"]).execute()
+    return jsonify(result.data)
+
+@app.route("/allprofiles", methods=["GET"])
+def allprofiles():
+    result = databaseClient.table("Profile").select("*").execute()
+    return jsonify(result.data)
+
 @app.route("/location")
 def location():
     url = "https://en.wikipedia.org/wiki/List_of_areas_of_London"
