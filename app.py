@@ -13,6 +13,7 @@ from supabase import create_client, Client
 import json
 import sys
 from numpy import rint
+from pydantic import BaseModel
 import ollama
 import os
 import osmnx as ox
@@ -226,7 +227,7 @@ def suggestpubs(profile_id):
     profile = result.data[0]
     result = databaseClient.table("SavedPubs").select("*").execute()
     all_saved_pubs = result.data
-    prompt = f"Given the user's profile: {profile}, and this list of pubs: {all_saved_pubs}, suggest some pubs from the list they might like to visit. Provide a list of pub names and their locations."
+    prompt = f"Given the user's profile: {profile}, and this list of pubs: {all_saved_pubs}, suggest some pubs from the list they might like to visit. Provide a list of pub names and their locations. Also provide the original JSON data for each pub in the list."
     ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
     return jsonify({'ai_response': ai_response})
 
@@ -328,6 +329,38 @@ def callai(user_prompt: str) -> str: # A function that takes a user prompt as in
     model=MODEL, messages=messages, tools=tools, ) 
     print(response) 
     return response["message"]["content"]
+
+class PubSuggestion(BaseModel):
+    id: int
+    name: str
+    location: str
+    summary: str
+
+class PubSuggestionList(BaseModel):
+    suggestions: list[PubSuggestion]
+
+@app.route('/structuredsuggestpubs/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
+def structuredsuggestpubs(profile_id):
+    # Fetch the profile from the database using the provided profile_id
+    result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
+    if not result.data:
+        return jsonify({"error": "Profile not found"}), 404
+
+    profile = result.data[0]
+    result = databaseClient.table("SavedPubs").select("*").execute()
+    all_saved_pubs = result.data
+    prompt = f"Given the user's profile: {profile}, and this list of pubs: {all_saved_pubs}, suggest some pubs from the list they might like to visit."
+    response = client.chat (
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that suggests pubs based on user profiles."},
+            {"role": "user", "content": prompt}],
+        format= PubSuggestionList.model_json_schema(),
+    )
+    suggestions = PubSuggestionList.model_validate_json(response["message"]["content"])
+    return jsonify(suggestions.model_dump())  # Return the list of suggested pubs as JSON
+   
+
 
 ''' 
 messages.append(response["message"])
