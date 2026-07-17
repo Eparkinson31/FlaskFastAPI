@@ -216,6 +216,21 @@ def ai():
     ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
     return jsonify({'ai_response': ai_response})
 
+@app.route('/suggestpubs/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
+def suggestpubs(profile_id):
+    # Fetch the profile from the database using the provided profile_id
+    result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
+    if not result.data:
+        return jsonify({"error": "Profile not found"}), 404
+
+    profile = result.data[0]
+    result = databaseClient.table("SavedPubs").select("*").execute()
+    all_saved_pubs = result.data
+    prompt = f"Given the user's profile: {profile}, and this list of pubs: {all_saved_pubs}, suggest some pubs from the list they might like to visit. Provide a list of pub names and their locations."
+    ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
+    return jsonify({'ai_response': ai_response})
+
+
 # function calling example with ollama
 
 client = ollama.Client()
