@@ -360,7 +360,36 @@ def structuredsuggestpubs(profile_id):
     suggestions = PubSuggestionList.model_validate_json(response["message"]["content"])
     return jsonify(suggestions.model_dump())  # Return the list of suggested pubs as JSON
    
+@app.route('/validatepubname', methods=['POST']) # Creates a route for validating a pub name, which takes the pub name as a URL parameter and returns whether the pub name is valid or not.
+def validatepubname():
+    req_data = request.get_json()
+    pub_name = req_data.get("pub_name")
+    prompt = f"Validate the pub name: {pub_name}. Return 'Valid' if the name is valid, otherwise return 'Invalid'."
+    response = client.chat(
+        model=MODEL,
+        messages=[  {
+        "role": "system",
+        "content": """
+You are a helpful assistant that validates existing pubs that are located in London, England.
+Do not invent information. If you cannot find the pub, return 'exists': false and leave other fields empty.
+For each pub, determine:
+- exists (true/false)
+- address
+- postal_code
+- located_in_london (true/false)
+- confidence (high/medium/low)
+- reason
 
+
+Return only valid JSON.
+""",
+    },
+            #{"role": "system", "content": "You are a helpful assistant that validates existing pubs that are located in London, England."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    validation_result = response["message"]["content"]
+    return jsonify({"pub_name": pub_name, "validation_result": json.loads(validation_result)})
 
 ''' 
 messages.append(response["message"])
