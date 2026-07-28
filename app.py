@@ -13,12 +13,13 @@ from supabase import create_client, Client
 import json
 import sys
 from numpy import rint
-from pydantic import BaseModel
+from pydantic import BaseModel #between the user and the AI model.
 import ollama
 import os
 import osmnx as ox
 import pandas as pd
 import requests
+import ai
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -28,9 +29,9 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
 
 
-SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co"
-SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M"
-databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY))
+SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabase project, which is used to connect to the Supabase database. This URL is specific to the user's Supabase project and is required for establishing a connection to the database.
+SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M" # The API key for the Supabase project, which is used to authenticate requests to the Supabase database. This key is specific to the user's Supabase project and is required for establishing a connection to the database.
+databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY)) # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
 
 '''
  async def get_pub_reviews(pub_name, address):
@@ -56,11 +57,27 @@ databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY))
 # Example Usage
 # reviews = await get_pub_reviews("The Flask", "Highgate, London")
 ''' 
-@app.route("/chat", methods=["POST"]) #Creates a route for getting the AI response, which takes the current notes list as input and returns the AI's summary of the notes.
-def chat():
-    conversation_history = request.get_json()
+@app.route("/ingest", methods=["GET"]) # Creates a route for ingesting data, which takes a JSON payload as input and inserts it into the "SavedPubs" table in the Supabase database.
+def ingest(): # Defines the ingest function that handles POST requests to the "/ingest" endpoint. This function retrieves the JSON payload from the request body, which is expected to contain data to be inserted into the "SavedPubs" table in the Supabase database. It then calls the Supabase client to insert the data into the specified table and returns a JSON response indicating the success of the operation along with the inserted data.
+    filename= "raw/2026-07-24-historic-pubs-in-london.md" # Specifies the filename of the raw data file that contains information about historic pubs in London. This file is expected to be in Markdown format and is used as the source of data for ingestion into the Supabase database.
+    prompt= (
+        "You are a helpful assistant that ingests data into a wiki. "
+        "You should read the file CLAUDE.md as the schema for the wiki. "
+        "You should read the wiki files in the wiki folder. "
+        "You should update and save wiki files in the wiki folder. "
+        "You should read the raw file " + filename + " and ingest the data into the wiki. "
+    )
+    response = ai.callai(prompt)
+    return jsonify({"message": "Data ingested successfully", "ai_response": response}) # Returns a JSON response indicating that the data ingestion was successful, along with the AI's response to the ingestion prompt.
+
+@app.route("/chat", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.
+def chat(): # Defines the chat function that handles POST requests to the "/chat" endpoint. This function retrieves the conversation history from the request body, calls the AI model with that history, and returns the updated conversation history including the AI's response.
+    conversation_history = request.get_json() # Retrieves the conversation history from the request body, which is expected to be a JSON array of messages representing the conversation between the user and the AI model.
     response = client.chat(  # Calls the chat method of the AI client, passing in the model to use, the conversation messages, and the available tools. The AI model will process this information and generate a response based on the user's prompt and the system instructions, potentially using the tools if it determines that they are needed to generate an appropriate response. The response from the AI model is expected to include a message with content that can be returned to the user.
-    model=MODEL, messages=conversation_history) 
+    model=MODEL, messages=conversation_history) # Calls the chat method of the AI client, passing in the model to use and the conversation messages. 
+    #The AI model will process this information and generate a response based on the user's prompt and the system instructions, 
+    #potentially using the tools if it determines that they are needed to generate an appropriate response. 
+    # The response from the AI model is expected to include a message with content that can be returned to the user.
     conversation_history.append(response.message.model_dump())
     return jsonify(conversation_history)
 
@@ -94,7 +111,7 @@ def updateprofile():
     result = databaseClient.table("Profile").update(profile).eq("id",update["id"]).execute()
     return jsonify(result.data[0])  # Return the first updated profile data
 
-@app.route("/allprofiles", methods=["GET"])
+@app.route("/allprofiles", methods=["GET"]) # Creates a route for retrieving all profiles from the database, which returns a JSON response containing the list of profiles.
 def allprofiles():
     result = databaseClient.table("Profile").select("*").execute()
     return jsonify(result.data)
@@ -211,8 +228,8 @@ def notcompleted(note):
     # Redirect to the list of todos after marking as not completed
     return redirect(url_for('home'))
 
-@app.route('/ai', methods=['GET']) # Specific function for the website to call the AI model, which can be used in the future for more complex interactions
-def ai():
+@app.route('/aimodel', methods=['GET']) # Specific function for the website to call the AI model, which can be used in the future for more complex interactions
+def aimodel():
     prompt = request.args.get('prompt', 'The prompt is empty')
     ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
     return jsonify({'ai_response': ai_response})
@@ -238,19 +255,34 @@ client = ollama.Client()
 
 MODEL = "qwen3-coder:30b"
 
+DATA_DIR = "data/"
+
+
 def add(a: float, b: float) -> str: # A simple function that takes two numbers as input and returns their sum as a string. This function can be called by the AI model when it needs to perform addition.
     return str(a + b)
 
+#send to Ollama a set of tools that the AI can use to perform specific tasks, such as addition, reading files, or listing files. The AI can call these tools when generating its response to a user prompt.
 def read_file(path: str) -> str: # A function that takes a file path as input and returns the contents of the file as a string. This function can be called by the AI model when it needs to read a file from disk. It checks if the file exists and is not a directory before reading its contents, and it handles errors gracefully by returning appropriate error messages.
-    p = Path(path)
+    p = Path(DATA_DIR + path)
     if not p.exists():
         return f"Error: file not found: {path}"
     if p.is_dir():
         return f"Error: path is a directory: {path}"
     return p.read_text(encoding="utf-8", errors="replace")[:4000]
 
+#Write file function for Ollama to write wiki pages to disk. 
+def write_file(path: str, content: str) -> str: # A function that takes a file path and content as input and writes the content to the specified file. This function can be called by the AI model when it needs to write data to a file on disk. It checks if the path is valid and handles errors gracefully by returning appropriate error messages.
+    p = Path(DATA_DIR + path)
+    if p.exists() and p.is_dir():
+        return f"Error: path is a directory: {path}"
+    try:
+        p.write_text(content, encoding="utf-8", errors="replace")
+        return f"Successfully wrote to {path}"
+    except Exception as e:
+        return f"Error writing to file: {e}"
+
 def list_files(path: str) -> str: # A function that takes a directory path as input and returns a list of files in that directory as a string. This function can be called by the AI model when it needs to list the files in a directory. It checks if the directory exists and is indeed a directory before listing its contents, and it handles errors gracefully by returning appropriate error messages. It also limits the output to the first 200 files to avoid overwhelming the response.
-    p = Path(path)
+    p = Path(DATA_DIR + path)
     if not p.exists():
         return f"Error: path not found: {path}"
     if not p.is_dir():
@@ -289,6 +321,21 @@ def callai(user_prompt: str) -> str: # A function that takes a user prompt as in
         }
     },
     {
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": "Write a UTF-8 text file to disk",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "content": {"type": "string"}
+                    },
+                    "required": ["path", "content"]
+                }
+            }
+        },
+    {
         "type": "function",
         "function": {
             "name": "list_files",
@@ -307,6 +354,7 @@ def callai(user_prompt: str) -> str: # A function that takes a user prompt as in
     tool_map = { # A mapping of tool names to their corresponding functions. This allows the AI model to call the appropriate function when it decides to use a tool as part of its response generation. The keys in this dictionary correspond to the names of the tools defined in the tools list, and the values are the actual Python functions that implement the functionality of those tools.
     "add": add,
     "read_file": read_file,
+    "write_file": write_file,
     "list_files": list_files,
     }
 
