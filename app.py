@@ -21,12 +21,13 @@ import pandas as pd
 import requests
 import ai
 
+
 app = Flask(__name__)
 cors = CORS(app)
 noteslist = []
 app.config['CORS_HEADERS'] = 'Content-Type'
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+  app.run(host='0.0.0.0', port=5000, debug=True)
 
 
 SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabase project, which is used to connect to the Supabase database. This URL is specific to the user's Supabase project and is required for establishing a connection to the database.
@@ -62,13 +63,29 @@ def ingest(): # Defines the ingest function that handles POST requests to the "/
     filename= "raw/2026-07-24-historic-pubs-in-london.md" # Specifies the filename of the raw data file that contains information about historic pubs in London. This file is expected to be in Markdown format and is used as the source of data for ingestion into the Supabase database.
     prompt= (
         "You are a helpful assistant that ingests data into a wiki. "
-        "You should read the file CLAUDE.md as the schema for the wiki. "
-        "You should read the wiki files in the wiki folder. "
-        "You should update and save wiki files in the wiki folder. "
-        "You should read the raw file " + filename + " and ingest the data into the wiki. "
+        "Read the file schema.md as the schema for the wiki. "
+        "Read the wiki files in the wiki folder. "
+        "Use tools to update and save wiki files in the wiki folder. "
+        "Read the raw file " + filename + " and ingest the data into the wiki. "
     )
     response = ai.callai(prompt)
     return jsonify({"message": "Data ingested successfully", "ai_response": response}) # Returns a JSON response indicating that the data ingestion was successful, along with the AI's response to the ingestion prompt.
+
+"""""
+@app.route("/query", methods=["POST"]) # Creates a route for querying the AI model, which takes a user prompt as input and returns the AI's response based on that prompt.
+def query(): # Defines the query function that handles POST requests to the "/query" endpoint. This function retrieves the user prompt from the request body, which is expected to be a JSON object containing a "prompt" field. It then calls the callai function with this prompt to get the AI's response, which is expected to be generated based on the user's input. Finally, it returns a JSON response containing the AI's response.
+    user_prompt = request.get_json().get("prompt") # Retrieves the user prompt from the request body, which is expected to be a JSON object containing a "prompt" field. This prompt is used as input for the AI model to generate a response.
+    ai_response = ai.callai(user_prompt)  # Calls the callai function with the user prompt to get the AI's response. This function handles the interaction with the AI model and returns the generated response based on the user's input.
+    return jsonify({"ai_response": ai_response}) # Returns a JSON response containing the AI's response, which can be used by the client application to display or process the generated output.
+
+
+@app.route("/lint", methods=["POST"]) # Creates a route for linting a file, which takes a file path as input and returns the AI's response after linting the specified file.
+def lint(): # Defines the lint function that handles POST requests to the "/lint" endpoint. This function retrieves the file path from the request body, which is expected to be a JSON object containing a "path" field. It then constructs a prompt for the AI model to lint the specified file and calls the callai function with this prompt to get the AI's response. Finally, it returns a JSON response containing the AI's response after linting the file.
+    file_path = request.get_json().get("path") # Retrieves the file path from the request body, which is expected to be a JSON object containing a "path" field. This path is used as input for the AI model to perform linting on the specified file.
+    prompt = f"Lint the file at {file_path} and return any issues found." # Constructs a prompt for the AI model to lint the specified file. This prompt instructs the AI to analyze the contents of the file and return any issues or suggestions for improvement.
+    ai_response = ai.callai(prompt)  # Calls the callai function with the constructed prompt to get the AI's response after linting the specified file. This function handles the interaction with the AI model and returns the generated response based on the linting task.
+    return jsonify({"ai_response": ai_response}) # Returns a JSON response containing the AI's response after linting the specified file, which can be used by the client application to display or process any issues found in the file.
+"""
 
 @app.route("/chat", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.
 def chat(): # Defines the chat function that handles POST requests to the "/chat" endpoint. This function retrieves the conversation history from the request body, calls the AI model with that history, and returns the updated conversation history including the AI's response.
@@ -78,7 +95,7 @@ def chat(): # Defines the chat function that handles POST requests to the "/chat
     #The AI model will process this information and generate a response based on the user's prompt and the system instructions, 
     #potentially using the tools if it determines that they are needed to generate an appropriate response. 
     # The response from the AI model is expected to include a message with content that can be returned to the user.
-    conversation_history.append(response.message.model_dump())
+    conversation_history.append(response.message.model_dump()) #add the AI's response to the conversation history
     return jsonify(conversation_history)
 
 @app.route("/allsavedpubs")
@@ -89,10 +106,7 @@ def allsavedpubs():
 @app.route("/publist")
 def publist():
     allpubs = ox.features_from_place("London, England", tags={"amenity": "pub"})
-    pubs = allpubs[
-        (allpubs["drink:guinness"] == "yes")
-    ]
-    return Response(pubs.to_json(), mimetype="application/json") 
+    return Response(allpubs.to_json(), mimetype="application/json")
 
 @app.route("/createprofile", methods=["POST"])
 def createprofile():
@@ -171,62 +185,12 @@ async def reviews():
     reviews = await get_pub_reviews("The Flask", "Highgate, London")
     return jsonify(reviews)
     
-
-@app.route("/test")
-def test():
-    return "Test route is working!"
-
 # The home route of the Flask application. When a user accesses the root URL ("/"),
 # this function is called. It constructs a prompt for the AI model that includes instructions 
 # for summarizing the user's tasks based on the current notes list. It then calls the callai function 
 # with this prompt to get the AI's response, which is expected to be a summary of the tasks. Finally,
 # it renders the "index.html" template, passing in the current notes list and the AI's response so that they
 # can be displayed on the webpage.
-@app.route("/")
-def home():  
-    prompt = "You are organising a todo list for the user. Your role is to provide them with an easy, human readable summary of their tasks. Given these tasks, summarise them in a concise, human friendly manner. Use a conversational tone. If there are no tasks, state 'No remaining tasks, hooray!'" + json.dumps(noteslist)  #Opens the homepage and creates a prompt asking the AI to summarize the notes.  
-    ai_response = callai(prompt)  # Call the AI function with a prompt
-    return render_template("index.html", noteslist=noteslist, ai_response=ai_response)  #Sends the notes and AI response to the index.html page so they can be displayed on the website.
-
-@app.route("/ai_response", methods=["POST"]) #Creates a route for getting the AI response, which takes the current notes list as input and returns the AI's summary of the notes.
-def ai_response():
-    req_data = request.get_json()
-    prompt = "You are organising a todo list for the user. Your role is to provide them with an easy, human readable summary of their tasks. Given these tasks, summarise them in a concise, human friendly manner. Use a conversational tone. If there are no tasks, state 'No remaining tasks, hooray!'" + json.dumps(req_data)  #Opens the homepage and creates a prompt asking the AI to summarize the notes.  
-    ai_response = callai(prompt)  # Call the AI function with a prompt
-    return ai_response
-
-@app.route("/add", methods=["GET"]) #Creates a route for adding a note, which takes the note as a query parameter and adds it to the notes list.
-def add_note():
-    item = request.args.get("item", "") # Gets the note from the query parameters, with a default value of an empty string if no note is provided.
-    noteslist.append({"item": item, "completed": False})  # Call the add method in the service layer
-    # Here you would typically add the note to a database or in-memory list
-    # For demonstration, we'll just return the note back as a confirmation
-    return redirect(url_for('home'))  # Redirect back to the home page to show the updated notes list
-
-@app.route('/delete/<note>', methods=['POST']) #Creates a route for deleting a note, which takes the note as a URL parameter and deletes it from the notes list.
-def delete(note):
-    # Call the delete method in the service layer
-    noteslist[:] = [d for d in noteslist if d.get('item') != note]
-    # Redirect to the list of todos after deletion
-    return redirect(url_for('home'))  # Redirect back to the home page to show the updated notes list
-
-@app.route('/completed/<note>', methods=['POST']) #Creates a route for marking a note as completed, which takes the note as a URL parameter and updates its status.
-def completed(note):
-    # Call the completed method in the service layer
-    for d in noteslist: # Iterate through the notes list to find the note that matches the provided note parameter
-        if d.get('item') == note: # If a match is found, update the 'completed' status of that note to True
-            d['completed'] = True # This line sets the 'completed' key of the matching note to True, indicating that the note has been marked as completed.
-    # Redirect to the list of todos after marking as completed
-    return redirect(url_for('home'))  # Redirect back to the home page to show the updated notes list
-
-@app.route('/notcompleted/<note>', methods=['POST']) #Creates a route for marking a note as not completed, which takes the note as a URL parameter and updates its status.
-def notcompleted(note):
-    # Call the notcompleted method in the service layer
-    for d in noteslist:
-        if d.get('item') == note: # If a match is found, update the 'completed' status of that note to False
-            d['completed'] = False
-    # Redirect to the list of todos after marking as not completed
-    return redirect(url_for('home'))
 
 @app.route('/aimodel', methods=['GET']) # Specific function for the website to call the AI model, which can be used in the future for more complex interactions
 def aimodel():
@@ -249,6 +213,11 @@ def suggestpubs(profile_id):
     return jsonify({'ai_response': ai_response})
 
 
+
+
+
+
+
 # function calling example with ollama
 
 client = ollama.Client()
@@ -257,9 +226,6 @@ MODEL = "qwen3-coder:30b"
 
 DATA_DIR = "data/"
 
-
-def add(a: float, b: float) -> str: # A simple function that takes two numbers as input and returns their sum as a string. This function can be called by the AI model when it needs to perform addition.
-    return str(a + b)
 
 #send to Ollama a set of tools that the AI can use to perform specific tasks, such as addition, reading files, or listing files. The AI can call these tools when generating its response to a user prompt.
 def read_file(path: str) -> str: # A function that takes a file path as input and returns the contents of the file as a string. This function can be called by the AI model when it needs to read a file from disk. It checks if the file exists and is not a directory before reading its contents, and it handles errors gracefully by returning appropriate error messages.
@@ -438,22 +404,3 @@ Return only valid JSON.
     )
     validation_result = response["message"]["content"]
     return jsonify({"pub_name": pub_name, "validation_result": json.loads(validation_result)})
-
-''' 
-messages.append(response["message"])
- for call in response["message"].get("tool_calls") or []:
-      name = call["function"]["name"] 
-      args = call["function"]["arguments"] 
-      result = tool_map[name](**args)
-       
-     messages.append({ 
-     "role": "tool", 
-     "name": name, 
-     "content": result,
-       }) 
-       final_response = client.chat( 
-       model=MODEL, messages=messages,
-        ) 
-        print(final_response)
-          return final_response["message"]["content"] 
-'''
