@@ -231,6 +231,18 @@ knowledge wiki and produce artifacts (documents, emails, scripts) on request.
 - If a question can be answered from the wiki, use wiki_search or wiki_read first.
 - If the user asks about something not in the wiki, answer from general knowledge
   but suggest adding it to the wiki.
+
+## Ingest Instructions
+When the user asks to ingest a source:
+
+1. Read the source using read_file().
+2. Create new wiki pages using wiki_write() if they do not exist.
+3. Update existing wiki pages using wiki_update().
+4. Update index.md if new pages are added.
+5. Append an entry to log.md.
+6. Do NOT simply summarise the file.
+7. Continue calling tools until the wiki has been updated.
+8. Only then provide a summary of the changes made.
 """
 
     if mode == "react":
@@ -295,6 +307,9 @@ async def run_agent_loop(
         mode=mode,
         action_descriptions=action_descriptions,
     )
+    #Add task specific instructions EP
+    if task_type == "wiki_ingest":
+        system_prompt += ""
 
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]

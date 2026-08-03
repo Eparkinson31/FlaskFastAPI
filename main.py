@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Archivist server...")
 
     # Load config
-    config_path = Path("config/config.yaml")
+    config_path = Path("config.yaml")
     if not config_path.exists():
         logger.error(f"Config not found at {config_path}")
         sys.exit(1)
@@ -145,7 +145,7 @@ class SearchResult(BaseModel):
     snippet: str
 
 
-# --- Endpoints ---
+# --- Routes ---
 
 @app.get("/health")
 async def health():
@@ -229,12 +229,12 @@ async def list_outputs():
 
 
 # --- CLI Entry Point ---
-"""==
+
 def cli():
-   # Command-line entry point.
+    # Command-line entry point.
     import uvicorn
     uvicorn.run(
-        "src.main:app",
+        "main:app",
         host=config.host if config else "127.0.0.1",
         port=config.port if config else 8420,
         reload=True,
@@ -244,9 +244,8 @@ def cli():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "src.main:app",
+        "main:app",
         host="127.0.0.1",
         port=8420,
         reload=True,
     ) 
-"""

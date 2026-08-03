@@ -34,58 +34,6 @@ SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabas
 SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M" # The API key for the Supabase project, which is used to authenticate requests to the Supabase database. This key is specific to the user's Supabase project and is required for establishing a connection to the database.
 databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY)) # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
 
-'''
- async def get_pub_reviews(pub_name, address):
-    
-    async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=True)
-        page = await browser.new_page()
-
-        search_query = f"{pub_name} {address} reviews"
-        await page.goto(f"https://www.google.com/search?q={search_query}")
-        # Here you would add code to scrape the reviews from the search results page
-        # This is a placeholder for demonstration purposes
-        try:
-            await page.wait_for_selector('.review-content-class', timeout=5000)
-            reviews = await page.eval_on_selector_all('.review-content-class', 
-                                                     "elements => elements.map(e => e.innerText)")
-            return reviews
-        except Exception as e:
-            print(f"Could not retrieve reviews for {pub_name}: {e}")
-            return []
-        finally:
-            await browser.close()
-# Example Usage
-# reviews = await get_pub_reviews("The Flask", "Highgate, London")
-''' 
-@app.route("/ingest", methods=["GET"]) # Creates a route for ingesting data, which takes a JSON payload as input and inserts it into the "SavedPubs" table in the Supabase database.
-def ingest(): # Defines the ingest function that handles POST requests to the "/ingest" endpoint. This function retrieves the JSON payload from the request body, which is expected to contain data to be inserted into the "SavedPubs" table in the Supabase database. It then calls the Supabase client to insert the data into the specified table and returns a JSON response indicating the success of the operation along with the inserted data.
-    filename= "raw/2026-07-24-historic-pubs-in-london.md" # Specifies the filename of the raw data file that contains information about historic pubs in London. This file is expected to be in Markdown format and is used as the source of data for ingestion into the Supabase database.
-    prompt= (
-        "You are a helpful assistant that ingests data into a wiki. "
-        "Read the file schema.md as the schema for the wiki. "
-        "Read the wiki files in the wiki folder. "
-        "Use tools to update and save wiki files in the wiki folder. "
-        "Read the raw file " + filename + " and ingest the data into the wiki. "
-    )
-    response = ai.callai(prompt)
-    return jsonify({"message": "Data ingested successfully", "ai_response": response}) # Returns a JSON response indicating that the data ingestion was successful, along with the AI's response to the ingestion prompt.
-
-"""""
-@app.route("/query", methods=["POST"]) # Creates a route for querying the AI model, which takes a user prompt as input and returns the AI's response based on that prompt.
-def query(): # Defines the query function that handles POST requests to the "/query" endpoint. This function retrieves the user prompt from the request body, which is expected to be a JSON object containing a "prompt" field. It then calls the callai function with this prompt to get the AI's response, which is expected to be generated based on the user's input. Finally, it returns a JSON response containing the AI's response.
-    user_prompt = request.get_json().get("prompt") # Retrieves the user prompt from the request body, which is expected to be a JSON object containing a "prompt" field. This prompt is used as input for the AI model to generate a response.
-    ai_response = ai.callai(user_prompt)  # Calls the callai function with the user prompt to get the AI's response. This function handles the interaction with the AI model and returns the generated response based on the user's input.
-    return jsonify({"ai_response": ai_response}) # Returns a JSON response containing the AI's response, which can be used by the client application to display or process the generated output.
-
-
-@app.route("/lint", methods=["POST"]) # Creates a route for linting a file, which takes a file path as input and returns the AI's response after linting the specified file.
-def lint(): # Defines the lint function that handles POST requests to the "/lint" endpoint. This function retrieves the file path from the request body, which is expected to be a JSON object containing a "path" field. It then constructs a prompt for the AI model to lint the specified file and calls the callai function with this prompt to get the AI's response. Finally, it returns a JSON response containing the AI's response after linting the file.
-    file_path = request.get_json().get("path") # Retrieves the file path from the request body, which is expected to be a JSON object containing a "path" field. This path is used as input for the AI model to perform linting on the specified file.
-    prompt = f"Lint the file at {file_path} and return any issues found." # Constructs a prompt for the AI model to lint the specified file. This prompt instructs the AI to analyze the contents of the file and return any issues or suggestions for improvement.
-    ai_response = ai.callai(prompt)  # Calls the callai function with the constructed prompt to get the AI's response after linting the specified file. This function handles the interaction with the AI model and returns the generated response based on the linting task.
-    return jsonify({"ai_response": ai_response}) # Returns a JSON response containing the AI's response after linting the specified file, which can be used by the client application to display or process any issues found in the file.
-"""
 
 @app.route("/chat", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.
 def chat(): # Defines the chat function that handles POST requests to the "/chat" endpoint. This function retrieves the conversation history from the request body, calls the AI model with that history, and returns the updated conversation history including the AI's response.
@@ -98,15 +46,15 @@ def chat(): # Defines the chat function that handles POST requests to the "/chat
     conversation_history.append(response.message.model_dump()) #add the AI's response to the conversation history
     return jsonify(conversation_history)
 
-@app.route("/allsavedpubs")
-def allsavedpubs():
-    result = databaseClient.table("SavedPubs").select("*").execute()
+@app.route("/allsavedthirdplaces", methods=["GET"]) # Creates a route for retrieving all saved third places from the database, which returns a JSON response containing the list of saved third places.
+def allsavedthirdplaces():
+    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
     return jsonify(result.data)
 
-@app.route("/publist")
-def publist():
-    allpubs = ox.features_from_place("London, England", tags={"amenity": "pub"})
-    return Response(allpubs.to_json(), mimetype="application/json")
+@app.route("/thirdplaceslist")
+def thirdplaceslist():
+    allthirdplaces = ox.features_from_place("London, England", tags={"amenity": "pub"})
+    return Response(allthirdplaces.to_json(), mimetype="application/json")
 
 @app.route("/createprofile", methods=["POST"])
 def createprofile():
@@ -175,14 +123,10 @@ def loadareas():
     })
 
 
-
-    #return Response(locations.to_json(), mimetype="application/json")
-
-
 @app.route("/reviews")
 async def reviews():
 
-    reviews = await get_pub_reviews("The Flask", "Highgate, London")
+    reviews = await get_third_place_reviews("The Flask", "Highgate, London")
     return jsonify(reviews)
     
 # The home route of the Flask application. When a user accesses the root URL ("/"),
@@ -198,17 +142,17 @@ def aimodel():
     ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
     return jsonify({'ai_response': ai_response})
 
-@app.route('/suggestpubs/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
-def suggestpubs(profile_id):
+@app.route('/suggestthirdplaces/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
+def suggestthirdplaces(profile_id):
     # Fetch the profile from the database using the provided profile_id
     result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
     if not result.data:
         return jsonify({"error": "Profile not found"}), 404
 
     profile = result.data[0]
-    result = databaseClient.table("SavedPubs").select("*").execute()
-    all_saved_pubs = result.data
-    prompt = f"Given the user's profile: {profile}, and this list of pubs: {all_saved_pubs}, suggest some pubs from the list they might like to visit. Provide a list of pub names and their locations. Also provide the original JSON data for each pub in the list."
+    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
+    all_saved_third_places = result.data
+    prompt = f"Given the user's profile: {profile}, and this list of third places: {all_saved_third_places}, suggest some third places from the list they might like to visit. Provide a list of names and their locations. Also provide the original JSON data for each third place in the list."
     ai_response = callai(prompt)  # This is a placeholder for the actual AI call function
     return jsonify({'ai_response': ai_response})
 
@@ -318,7 +262,6 @@ def callai(user_prompt: str) -> str: # A function that takes a user prompt as in
     ]
 
     tool_map = { # A mapping of tool names to their corresponding functions. This allows the AI model to call the appropriate function when it decides to use a tool as part of its response generation. The keys in this dictionary correspond to the names of the tools defined in the tools list, and the values are the actual Python functions that implement the functionality of those tools.
-    "add": add,
     "read_file": read_file,
     "write_file": write_file,
     "list_files": list_files,
@@ -344,14 +287,14 @@ def callai(user_prompt: str) -> str: # A function that takes a user prompt as in
     print(response) 
     return response["message"]["content"]
 
-class PubSuggestion(BaseModel):
+class ThirdPlaceSuggestion(BaseModel):
     id: int
     name: str
     location: str
     summary: str
 
-class PubSuggestionList(BaseModel):
-    suggestions: list[PubSuggestion]
+class ThirdPlaceSuggestionList(BaseModel):
+    suggestions: list[ThirdPlaceSuggestion]
 
 @app.route('/structuredsuggestpubs/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
 def structuredsuggestpubs(profile_id):
@@ -361,46 +304,45 @@ def structuredsuggestpubs(profile_id):
         return jsonify({"error": "Profile not found"}), 404
 
     profile = result.data[0]
-    result = databaseClient.table("SavedPubs").select("*").execute()
-    all_saved_pubs = result.data
-    prompt = f"Given the user's profile: {profile}, and this list of pubs: {all_saved_pubs}, suggest some pubs from the list they might like to visit."
+    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
+    all_saved_third_places = result.data
+    prompt = f"Given the user's profile: {profile}, and this list of third places: {all_saved_third_places}, suggest some third places from the list they might like to visit."
     response = client.chat (
         model=MODEL,
         messages=[
-            {"role": "system", "content": "You are a helpful assistant that suggests pubs based on user profiles."},
+            {"role": "system", "content": "You are a helpful assistant that suggests third places based on user profiles."},
             {"role": "user", "content": prompt}],
-        format= PubSuggestionList.model_json_schema(),
+        format= ThirdPlaceSuggestionList.model_json_schema(),
     )
-    suggestions = PubSuggestionList.model_validate_json(response["message"]["content"])
-    return jsonify(suggestions.model_dump())  # Return the list of suggested pubs as JSON
+    suggestions = ThirdPlaceSuggestionList.model_validate_json(response["message"]["content"])
+    return jsonify(suggestions.model_dump())  # Return the list of suggested third places as JSON
    
-@app.route('/validatepubname', methods=['POST']) # Creates a route for validating a pub name, which takes the pub name as a URL parameter and returns whether the pub name is valid or not.
-def validatepubname():
+@app.route('/validatethirdplacename', methods=['POST']) # Creates a route for validating a pub name, which takes the pub name as a URL parameter and returns whether the pub name is valid or not.
+def validatethirdplacename():
     req_data = request.get_json()
-    pub_name = req_data.get("pub_name")
-    prompt = f"Validate the pub name: {pub_name}. Return 'Valid' if the name is valid, otherwise return 'Invalid'."
+    third_place_name = req_data.get("third_place_name")
+    prompt = f"Validate the third place name: {third_place_name}. Return 'Valid' if the name is valid, otherwise return 'Invalid'."
     response = client.chat(
         model=MODEL,
         messages=[  {
         "role": "system",
         "content": """
-You are a helpful assistant that validates existing pubs that are located in London, England.
-Do not invent information. If you cannot find the pub, return 'exists': false and leave other fields empty.
-For each pub, determine:
-- exists (true/false)
-- address
-- postal_code
-- located_in_london (true/false)
-- confidence (high/medium/low)
-- reason
+You are a helpful assistant that validates existing third places that are located in London, England.
+Do not invent information. If you cannot find the third place, return 'exists': false and leave other fields empty.
+For each third place, determine:
+ - exists (true/false)
+ - address
+ - postal_code
+ - located_in_london (true/false)
+ - confidence (high/medium/low)
+ - reason
 
 
 Return only valid JSON.
 """,
-    },
-            #{"role": "system", "content": "You are a helpful assistant that validates existing pubs that are located in London, England."},
-            {"role": "user", "content": prompt}
-        ]
+        },
+        {"role": "user", "content": prompt}
+    ]
     )
     validation_result = response["message"]["content"]
-    return jsonify({"pub_name": pub_name, "validation_result": json.loads(validation_result)})
+    return jsonify({"third_place_name": third_place_name, "validation_result": json.loads(validation_result)})
