@@ -4,6 +4,7 @@ from pyexpat.errors import messages
 from pathlib import Path
 from wsgiref import headers
 from flask_cors import CORS, cross_origin
+import uuid
 from urllib import response
 from flask import Flask, request, jsonify, render_template, redirect, url_for,Response
 from bs4 import BeautifulSoup
@@ -21,19 +22,31 @@ import pandas as pd
 import requests
 import supabase
 import ai
+from werkzeug.utils import secure_filename
+import mimetypes
 
 
 app = Flask(__name__)
 cors = CORS(app)
 noteslist = []
 app.config['CORS_HEADERS'] = 'Content-Type'
-if __name__ == '__main__':
-  app.run(host='0.0.0.0', port=5000, debug=True)
 
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+ # --- checks that the code his code only runs when the file is executed directly, not when it's imported  ---
+if __name__ == '__main__':
+  print("Starting Flask server on http://0.0.0.0:5000")
+  app.run(host='0.0.0.0', port=5000, debug=True)
 
 SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabase project, which is used to connect to the Supabase database. This URL is specific to the user's Supabase project and is required for establishing a connection to the database.
 SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M" # The API key for the Supabase project, which is used to authenticate requests to the Supabase database. This key is specific to the user's Supabase project and is required for establishing a connection to the database.
 databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY)) # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
+
+
 
 
 @app.route("/chat", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.
@@ -100,6 +113,91 @@ def testuploadfile():
         )
     )
     return jsonify(response)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+#new version. 
+@app.route("/thirdplacephotoupload", methods=["POST"])
+def thirdplacephotoupload():
+    print("New received request to upload a file")
+    if "file" not in request.files:
+        print("No file part in the request")
+        return jsonify(
+            {
+                "error": "No file supplied"
+            }
+        ), 400
+
+    image = request.files["file"]
+    orginal_filename = image.filename
+    extension = os.path.splitext(image.filename)[1]
+    filename = f"public/{uuid.uuid4()}{extension}"
+    contents = image.read()
+    print(f"File size: {len(contents)} bytes")  # Print the size of the file for debugging purposes
+    print(contents[:100])  # Print the first 100 bytes of the file for debugging purposes
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    print(f"Uploading file to Supabase storage with filename: {filename}, extension: {extension}, mime: {mime}, original filename: {orginal_filename}")
+    print(f"File content type: {image.content_type},image: {image}, image.mimetype: {image.mimetype}, type: {type(image)}")
+    response = (
+        databaseClient
+        .storage
+        .from_("thirdplacephotos")
+        .upload(
+            path=filename,
+            file=contents,
+            file_options={
+                "content-type": mime,
+                "upsert": False,
+            },
+        )
+    )
+
+    return jsonify(response)
+
+#old version.
+@app.route("/thirdplaceuploadphoto", methods=["POST"])
+def thirdplaceuploadphoto():
+    print("Received request to upload a file")
+    if 'file' not in request.files:
+        print("No file part in the request")
+        return jsonify({"success": False, "error": "No file found in request"}), 400
+
+    uploaded_file = request.files['file']
+
+    savename = request.form.get('savename', 'default_name')
+    mimetype = request.form.get('mimetype', 'image/jpeg')
+    print(f"Received file: {uploaded_file.filename}, savename: {savename}, mimetype: {mimetype}")
+    if uploaded_file.filename == '':
+        print("No selected file")
+        return jsonify({"success": False, "error": "No selected file"}), 400
+
+    if uploaded_file and allowed_file(uploaded_file.filename):
+        filename = secure_filename(uploaded_file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        try:
+            uploaded_file.save(file_path)
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Failed to save file: {str(e)}"}), 500
+        path=f"public/{filename}"
+        print("***")
+        print(path)
+        print(uploaded_file.content_type)
+        with open(file_path, "rb") as f:
+            response = (
+                databaseClient.storage
+                .from_("thirdplacephotos")
+                .upload(
+                    file=f,
+                    path=f"public/{savename}",
+                    file_options={"cache-control": "3600", "upsert": "true", "content-type": mimetype},
+                )
+            )
+        print(f"File uploaded successfully: {response}")
+        return jsonify({"success": True, "response": response}), 200
+    print("Invalid file type")
+    return jsonify({"success": False, "error": "Invalid file"}), 400
 
 @app.route("/alllocations", methods=["GET"])
 def alllocations():
