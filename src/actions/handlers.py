@@ -3,6 +3,10 @@ Wiki Action Handlers
 
 Each handler is an async function that takes keyword arguments (from the LLM's
 action params) and returns a string result that gets fed back to the LLM.
+
+These are the "Python tool calls" the small agent makes. The agent never
+touches the filesystem directly — it asks for a tool by name, we run the
+matching method here, and hand the string result back to the model.
 """
 
 import json
@@ -12,11 +16,12 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from config import Config
-from search import WikiSearch
+from src.core.config import Config
+from src.core.search import WikiSearch
 
 logger = logging.getLogger(__name__)
 
+# Functions that implement tool calls
 
 class ActionRegistry:
     """Registry of all available action handlers."""
@@ -25,6 +30,7 @@ class ActionRegistry:
         self.config = config
         self.search = search
 
+# tool map 
     @property
     def handlers(self) -> dict:
         """Map of action names to handler functions."""
@@ -42,13 +48,18 @@ class ActionRegistry:
             "draft_email": self.draft_email,
             "render_md": self.render_md,
             "datetime_now": self.datetime_now,
+            # --- Profile tools (STUDENT EXERCISE) ---
+            "profile_read": self.profile_read,
+            "profile_write": self.profile_write,
+            "profile_list": self.profile_list,
         }
 
+# tool descriptions map
     @property
     def descriptions(self) -> dict:
         """Human-readable descriptions for each action."""
         return {
-            "wiki_read": "Read a wiki page by path (e.g., 'wiki/projects/pycad.md')",
+            "wiki_read": "Read a wiki page by path (e.g., 'wiki/pubs/the-black-friar.md')",
             "wiki_write": "Create or overwrite a wiki page. Params: path, content",
             "wiki_update": "Update a section of an existing wiki page. Params: path, section, content",
             "wiki_search": "Full-text search across wiki pages. Params: query, limit?",
@@ -61,6 +72,10 @@ class ActionRegistry:
             "draft_email": "Draft an email. Params: to, subject, body",
             "render_md": "Save formatted markdown to outputs/. Params: filename, content",
             "datetime_now": "Get the current date and time",
+            # --- Profile tools (STUDENT EXERCISE) ---
+            "profile_read": "Read a user profile by name. Params: name",
+            "profile_write": "Create or overwrite a user profile. Params: name, content",
+            "profile_list": "List all user profiles",
         }
 
     # --- Wiki Operations ---
@@ -84,6 +99,7 @@ class ActionRegistry:
         full_path.write_text(content, encoding="utf-8")
 
         # Re-index the updated file
+        # Updates the wiki search database and reindexes the file.
         self.search.update_if_changed(full_path)
 
         return f"Written: {path} ({len(content)} chars)"
@@ -227,6 +243,64 @@ status: draft
         """Get current date and time."""
         return datetime.now().isoformat()
 
+    # ------------------------------------------------------------------
+    # --- Profile Operations (STUDENT EXERCISE) ---
+    #
+    # These three handlers are already WIRED UP for you:
+    #   * registered in `handlers` and `descriptions` above, and
+    #   * given JSON schemas in agent.py (TOOL_SCHEMAS).
+    # The bodies are intentionally left blank. Your job is to implement them so
+    # the agent can read and write user profiles, exactly the way it reads and
+    # writes wiki pages.
+    #
+    # Store each profile as a markdown file under vault/profiles/, e.g.
+    #   vault/profiles/alice.md
+    # Use `self.config.profiles_path` for that folder.
+    #
+    # HOW TO DO IT: copy the body of the matching wiki handler and adapt it.
+    #   profile_read   <- model on wiki_read()  (read a file, return its text)
+    #   profile_write  <- model on wiki_write() (mkdir parents, write the file)
+    #   profile_list   <- model on list_dir()   (list files in profiles_path)
+    #
+    # Think about: safety (see _is_safe_profile_path below), what to return when
+    # the profile does not exist, and the exact string you return to the model.
+    # ------------------------------------------------------------------
+
+    async def profile_read(self, name: str) -> str: 
+        """Read a user profile page by name (e.g. 'alice')."""
+        full_path = self.config.profiles_path / f"{name}.md"
+        if not self._is_safe_profile_path(full_path):
+            return "Error: Path outside vault"
+        if not full_path.exists():
+            return f"Error: Profile not found for {name}"
+        try:
+            return full_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            return f"Error: Profile for {name} is a binary file, cannot read as text"
+
+
+    async def profile_write(self, name: str, content: str) -> str:
+        """Create or overwrite a user profile page. Params: name, content."""
+        full_path = self.config.profiles_path / f"{name}.md"
+        if not self._is_safe_profile_path(full_path):
+            return "Error: Path outside vault"
+        full_path.write_text(content, encoding="utf-8")
+        return f"Written: profiles/{name}.md"
+
+
+    async def profile_list(self) -> str:
+        """List all user profiles."""
+        full_path = self.config.profiles_path
+        if not full_path.is_dir():
+            return "No profiles found."
+
+        entries = []
+        for item in sorted(full_path.iterdir()):
+            if item.is_file() and item.suffix == ".md":
+                entries.append(item.stem)
+        return "\n".join(entries) if entries else "No profiles found."
+
+    
     # --- Path Safety ---
 
     def _is_safe_path(self, path: Path) -> bool:
@@ -251,6 +325,19 @@ status: draft
         """Check that a path is within outputs/."""
         try:
             path.resolve().relative_to(self.config.outputs_path.resolve())
+            return True
+        except ValueError:
+            return False
+
+    def _is_safe_profile_path(self, path: Path) -> bool:
+        """Check that a path is within profiles/.
+
+        Provided for the profile handlers above. Use it in profile_write (and
+        profile_read if you like) so the model can never write outside
+        vault/profiles/.
+        """
+        try:
+            path.resolve().relative_to(self.config.profiles_path.resolve())
             return True
         except ValueError:
             return False

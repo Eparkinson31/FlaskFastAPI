@@ -2,7 +2,9 @@
 Archivist Server
 
 FastAPI application that serves the agent loop via REST API.
-Run with: python -m src.main
+Run from the project root (the folder that contains `src/` and `config/`):
+
+    python -m src.main
 """
 
 import logging
@@ -14,10 +16,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from config import Config
-from search import WikiSearch
-from agent import run_agent_loop, AgentResponse
-from handlers import ActionRegistry
+from src.core.config import Config
+from src.core.search import WikiSearch
+from src.core.agent import run_agent_loop, AgentResponse
+from src.actions.handlers import ActionRegistry
 
 # --- Logging ---
 
@@ -46,7 +48,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Archivist server...")
 
     # Load config
-    config_path = Path("config.yaml")
+    config_path = Path("config/config.yaml")
     if not config_path.exists():
         logger.error(f"Config not found at {config_path}")
         sys.exit(1)
@@ -58,6 +60,7 @@ async def lifespan(app: FastAPI):
     config.wiki_path.mkdir(parents=True, exist_ok=True)
     config.raw_path.mkdir(parents=True, exist_ok=True)
     config.outputs_path.mkdir(parents=True, exist_ok=True)
+    config.profiles_path.mkdir(parents=True, exist_ok=True)
 
     # Load schema
     if config.schema_path.exists():
@@ -145,7 +148,7 @@ class SearchResult(BaseModel):
     snippet: str
 
 
-# --- Routes ---
+# --- Endpoints ---
 
 @app.get("/health")
 async def health():
@@ -161,6 +164,8 @@ async def health():
 async def chat(request: ChatRequest):
     """Send a message to the agent and get a response."""
     logger.info(f"Chat request: {request.message[:80]}...")
+
+
 
     # Load current wiki index
     wiki_index = ""
@@ -227,14 +232,13 @@ async def list_outputs():
             })
     return {"outputs": sorted(outputs, key=lambda x: x["modified"], reverse=True)}
 
-
 # --- CLI Entry Point ---
 
 def cli():
-    # Command-line entry point.
+    """Command-line entry point."""
     import uvicorn
     uvicorn.run(
-        "main:app",
+        "src.main:app",
         host=config.host if config else "127.0.0.1",
         port=config.port if config else 8420,
         reload=True,
@@ -244,8 +248,8 @@ def cli():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        "main:app",
+        "src.main:app",
         host="127.0.0.1",
         port=8420,
         reload=True,
-    ) 
+    )

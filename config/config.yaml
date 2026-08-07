@@ -1,0 +1,71 @@
+# Archivist Configuration
+# ========================
+
+app:
+  name: "Archivist"
+  version: "0.1.0"
+  vault_path: "./vault"       # Path to the wiki vault
+  outputs_path: "./vault/outputs"
+
+server:
+  host: "127.0.0.1"
+  port: 8420
+  ws_port: 8421               # WebSocket for streaming
+
+llm:
+  mode: "auto"                 # "auto" | "native" | "react"
+  max_iterations: 20           # Max action loop iterations per request
+  temperature: 0.1             # Low for reliable structured output
+  context_length: 32768
+
+models:
+  local:
+    # IMPORTANT: set these to a model you have actually pulled in Ollama and
+    # that supports tool calling (run `ollama list` to check). Small options
+    # that support tools include qwen3:4b / qwen3:8b / llama3.1:8b.
+    quick: "qwen3:8b"
+    default: "qwen3:8b"
+    host: "http://localhost:11434"
+
+  remote:
+    heavy: "qwen3:32b-q4_K_M"
+    host: "http://127.0.0.1:11434"  # Update with your desktop IP if you use one
+    # Left disabled so a student machine without the big model still works:
+    # any route that asks for "remote.*" falls back to local.default.
+    enabled: false
+
+  routing:
+    wiki_query: "local.quick"
+    wiki_ingest: "remote.heavy"   # falls back to local.default while remote is disabled
+    wiki_lint: "remote.heavy"
+    document_gen: "local.default"
+    code_execution: "local.default"
+    email_draft: "local.quick"
+    default: "local.default"
+
+search:
+  db_path: "./archivist-index.db"
+  rebuild_on_startup: true
+
+sandbox:
+  enabled: true
+  timeout_seconds: 30
+  max_memory_mb: 512
+  allow_network: false
+  writable_dirs:
+    - "./vault/outputs"
+
+telegram:
+  enabled: false               # Enable when ready
+  token: ""                    # From BotFather
+  allowed_user_ids: []         # Your Telegram user ID(s)
+
+mcp:
+  enabled: true
+  transport: "sse"             # "sse" for HTTP/SSE (multi-client)
+  host: "127.0.0.1"
+  port: 8422
+
+git:
+  auto_commit: true
+  commit_message_prefix: "[archivist]"

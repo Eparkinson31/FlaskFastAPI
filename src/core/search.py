@@ -3,6 +3,9 @@ Wiki Search Index (SQLite FTS5)
 
 Maintains a full-text search index over all wiki markdown files.
 Rebuilds on startup, watches for changes, and provides search queries.
+
+This is the "database" the agent reads from when it calls wiki_search: an
+SQLite full-text index built from the markdown files in vault/wiki/.
 """
 
 import sqlite3
@@ -10,7 +13,6 @@ import logging
 from pathlib import Path
 from datetime import datetime
 
-#pip install pyyaml
 import yaml
 
 logger = logging.getLogger(__name__)

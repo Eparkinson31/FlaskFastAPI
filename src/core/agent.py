@@ -4,6 +4,10 @@ Archivist Agent Loop
 The core reasoning loop that handles user messages, routes them through
 the LLM, parses actions (via native tool calling or ReAct tags), executes
 them, and iterates until a final response is produced.
+
+This is the "small agent": each turn the LLM may emit one or more tool calls
+(Python functions in handlers.py). We run them, feed the results back, and let
+the model decide what to do next — read the wiki, search it, or write to it.
 """
 
 import re
@@ -14,7 +18,7 @@ from typing import Any
 
 import ollama
 
-from config import Config
+from src.core.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +53,7 @@ def parse_react_response(text: str) -> tuple[str, list[ParsedAction]]:
 
 def parse_native_response(message) -> tuple[str, list[ParsedAction]]:
     """Parse a native tool-calling response from Ollama.
-    
+
     The ollama library returns message objects with attributes,
     not plain dicts.
     """
@@ -69,7 +73,12 @@ def parse_native_response(message) -> tuple[str, list[ParsedAction]]:
 # --- Mode Detection ---
 
 async def detect_mode(model: str, host: str, forced: str = "auto") -> str:
-    """Determine whether to use native tool calling or ReAct."""
+    """Determine whether to use native tool calling or ReAct.
+
+    Small local models sometimes do not advertise the "tools" capability. When
+    that happens we fall back to ReAct mode, where the model asks for tools by
+    printing <action>/<params> tags that we parse out of its plain-text reply.
+    """
     if forced != "auto":
         return forced
 
@@ -97,7 +106,7 @@ TOOL_SCHEMAS: dict[str, dict] = {
         "type": "object",
         "required": ["path"],
         "properties": {
-            "path": {"type": "string", "description": "Wiki page path, e.g. 'wiki/projects/pycad.md'"}
+            "path": {"type": "string", "description": "Wiki page path, e.g. 'wiki/pubs/the-black-friar.md'"}
         },
     },
     "wiki_write": {
@@ -128,8 +137,8 @@ TOOL_SCHEMAS: dict[str, dict] = {
     "wiki_list": {
         "type": "object",
         "properties": {
-            "directory": {"type": "string", "description": "Filter by directory, e.g. 'wiki/projects'"},
-            "type": {"type": "string", "description": "Filter by page type, e.g. 'project'"},
+            "directory": {"type": "string", "description": "Filter by directory, e.g. 'wiki/pubs'"},
+            "type": {"type": "string", "description": "Filter by page type, e.g. 'pub'"},
         },
     },
     "wiki_index": {
@@ -185,8 +194,33 @@ TOOL_SCHEMAS: dict[str, dict] = {
         "type": "object",
         "properties": {},
     },
+
+    # --- Profile tools (STUDENT EXERCISE) ---
+    # The schemas are wired up here so the model knows what arguments to send.
+    # You implement the matching handlers in handlers.py.
+    "profile_read": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+            "name": {"type": "string", "description": "Profile name/slug, e.g. 'alice'"},
+        },
+    },
+    "profile_write": {
+        "type": "object",
+        "required": ["name", "content"],
+        "properties": {
+            "name": {"type": "string", "description": "Profile name/slug"},
+            "content": {"type": "string", "description": "Full markdown content for the profile page"},
+        },
+    },
+    "profile_list": {
+        "type": "object",
+        "properties": {},
+    },
 }
 
+# This merges the function descriptions from the handlers.py with the schemas above
+# to create a tool list for the model 
 
 def build_tools_list(descriptions: dict[str, str]) -> list[dict]:
     """Build Ollama-compatible tools list with proper JSON schemas."""
@@ -270,6 +304,7 @@ Actions:
 
 # --- Agent Loop ---
 
+# Tells info about what happened in the agent loop, including the final text, actions taken, and model/mode used.
 @dataclass
 class AgentResponse:
     """The final response from the agent loop."""
@@ -279,7 +314,11 @@ class AgentResponse:
     mode_used: str = ""
     iterations: int = 0
 
-
+# The main call to have ollama evaluate a user message/prompt. 
+# Ollama will return a response that may contain tool calls (actions) or just plain text.
+# If Ollama returns response with tool calls (actions) we will execute those actions, 
+# add the results to the conversation history(stored in messages) and call ollama again with the updated conversation history.
+#if ollama returns a response without tool calls (actions) we will return the final response to the user in the form of an AgentResponse object.
 async def run_agent_loop(
     user_message: str,
     config: Config,
@@ -307,9 +346,6 @@ async def run_agent_loop(
         mode=mode,
         action_descriptions=action_descriptions,
     )
-    #Add task specific instructions EP
-    if task_type == "wiki_ingest":
-        system_prompt += ""
 
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]
@@ -329,16 +365,16 @@ async def run_agent_loop(
     for iteration in range(max_iterations):
         logger.info(f"Agent loop iteration {iteration + 1}")
 
-        # Call LLM
-        kwargs = {
+        # Call LLM the main loop 
+        chatarguments = {
             "model": model,
             "messages": messages,
             "options": {"temperature": config.llm.temperature},
         }
         if tools:
-            kwargs["tools"] = tools
+            chatarguments["tools"] = tools
 
-        response = await client.chat(**kwargs)
+        response = await client.chat(**chatarguments)
 
         # The ollama library returns a ChatResponse object
         message = response.message
@@ -376,7 +412,7 @@ async def run_agent_loop(
             ]
         messages.append(msg_dict)
 
-        # Execute actions and feed results back
+        # Execute tools and feed results back t
         for action in actions:
             handler = action_handlers.get(action.name)
             if handler is None:
@@ -405,8 +441,13 @@ async def run_agent_loop(
 
             # Feed result back to LLM
             if mode == "native":
+                # FIX: include the tool "name" so Ollama can associate this
+                # result with the call that produced it. Without it, some Ollama
+                # builds silently ignore the tool output and the model loops or
+                # hallucinates that nothing happened.
                 messages.append({
                     "role": "tool",
+                    "name": action.name,
                     "content": str(result),
                 })
             else:

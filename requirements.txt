@@ -1,0 +1,7 @@
+# Core backend dependencies for the Archivist LLM wiki agent.
+# Install into your virtual environment with:  pip install -r requirements.txt
+fastapi
+uvicorn
+ollama
+pyyaml
+pydantic

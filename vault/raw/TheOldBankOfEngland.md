@@ -1,0 +1,3 @@
+**![](https://usercontent.one/wp/www.thehistoryoflondon.co.uk/wp-content/uploads/2024/10/Counting-House-380x211.jpg?media=1784105565)The Old Bank of England**  
+_194 Fleet St, London EC4A 2LT_  
+The Old Bank of England on Fleet Street is one of London’s grandest pubs. It stands beside the Royal Courts of Justice and until the 1970s was the law courts branch of the Bank of England. In warm weather you might like to take your drink out to the yard behind the pub where you can sit inside an old London Routemaster bus. You can learn more about the Old Bank of England in my video [here](https://www.youtube.com/watch?v=xQXSWuZnJ-0&t=1s).

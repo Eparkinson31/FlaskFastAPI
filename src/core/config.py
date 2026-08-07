@@ -7,7 +7,6 @@ Loads and validates config.yaml, provides typed access to settings.
 from dataclasses import dataclass, field
 from pathlib import Path
 
-#pip install pyyaml
 import yaml
 
 
@@ -90,13 +89,17 @@ class Config:
     def schema_path(self) -> Path:
         return self.vault_path / "schema.md"
 
+    # FIX: index.md and log.md to live INSIDE the wiki/ folder (see vault/schema.md
+    # section 1 — the schema mandates that layout). The original code looked for
+    # them at the vault root (vault/index.md), which does not exist, so the agent
+    # was handed an empty wiki index and the wiki_index() tool crashed.
     @property
     def index_path(self) -> Path:
-        return self.vault_path / "index.md"
+        return self.vault_path / "wiki" / "index.md"
 
     @property
     def log_path(self) -> Path:
-        return self.vault_path / "log.md"
+        return self.vault_path / "wiki" / "log.md"
 
     @property
     def wiki_path(self) -> Path:
@@ -105,3 +108,10 @@ class Config:
     @property
     def raw_path(self) -> Path:
         return self.vault_path / "raw"
+
+    # NEW: home for user profile pages (used by the profile_* handlers that the
+    # student implements). Kept inside the vault so the same read/write/safety
+    # patterns from the wiki handlers apply.
+    @property
+    def profiles_path(self) -> Path:
+        return self.vault_path / "profiles"

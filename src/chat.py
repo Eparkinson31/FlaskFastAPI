@@ -2,7 +2,9 @@
 Archivist Terminal Chat
 
 Quick way to test the agent loop without the full server.
-Run with: python -m src.chat
+Run from the project root (the folder that contains `src/` and `config/`):
+
+    python -m src.chat
 
 This connects directly to Ollama — no FastAPI server needed.
 """
@@ -11,10 +13,10 @@ import asyncio
 import sys
 from pathlib import Path
 
-from config import Config
-from search import WikiSearch
-from agent import run_agent_loop
-from handlers import ActionRegistry
+from src.core.config import Config
+from src.core.search import WikiSearch
+from src.core.agent import run_agent_loop
+from src.actions.handlers import ActionRegistry
 
 
 async def main():
@@ -73,7 +75,8 @@ async def main():
         wiki_index = ""
         if config.index_path.exists():
             wiki_index = config.index_path.read_text(encoding="utf-8")
-
+        else:
+            print(f"Warning: {config.index_path} not found. No wiki index will be available.")
         print("\n[thinking...]")
 
         try:
