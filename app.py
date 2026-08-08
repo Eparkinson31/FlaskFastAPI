@@ -417,8 +417,8 @@ class ThirdPlaceSuggestion(BaseModel):
 class ThirdPlaceSuggestionList(BaseModel):
     suggestions: list[ThirdPlaceSuggestion]
 
-@app.route('/structuredsuggestpubs/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
-def structuredsuggestpubs(profile_id):
+@app.route('/structuredsuggestthirdplaces/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
+def structuredsuggestthirdplaces(profile_id):
     # Fetch the profile from the database using the provided profile_id
     result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
     if not result.data:
@@ -427,7 +427,7 @@ def structuredsuggestpubs(profile_id):
     profile = result.data[0]
     result = databaseClient.table("SavedThirdPlaces").select("*").execute()
     all_saved_third_places = result.data
-    prompt = f"Given the user's profile: {profile}, and this list of third places: {all_saved_third_places}, suggest some third places from the list they might like to visit."
+    prompt = f"Given the user's profile: {profile}, and this list of third places: {all_saved_third_places}, suggest three third places from the list they might like to visit."
     response = client.chat (
         model=MODEL,
         messages=[
