@@ -413,6 +413,8 @@ class ThirdPlaceSuggestion(BaseModel):
     name: str
     location: str
     summary: str
+    longitude: float
+    latitude: float
 
 class ThirdPlaceSuggestionList(BaseModel):
     suggestions: list[ThirdPlaceSuggestion]
@@ -427,7 +429,9 @@ def structuredsuggestthirdplaces(profile_id):
     profile = result.data[0]
     result = databaseClient.table("SavedThirdPlaces").select("*").execute()
     all_saved_third_places = result.data
-    prompt = f"Given the user's profile: {profile}, and this list of third places: {all_saved_third_places}, suggest three third places from the list they might like to visit."
+    prompt = f"""Given the user's profile: {profile}, 
+    and this list of third places: {all_saved_third_places}, 
+    suggest three third places from the list they might like to visit."""
     response = client.chat (
         model=MODEL,
         messages=[
