@@ -24,7 +24,11 @@ import supabase
 import ai
 from werkzeug.utils import secure_filename
 import mimetypes
-
+import src.main
+from src.core.agent import run_agent_loop, AgentResponse
+from src.core.config import Config
+from src.core.search import WikiSearch
+from src.actions.handlers import ActionRegistry
 
 
 app = Flask(__name__)
@@ -38,6 +42,13 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# --- Global State ---
+
+config: Config = None
+search: WikiSearch = None
+registry: ActionRegistry = None
+schema_content: str = ""
+
  # --- checks that the code his code only runs when the file is executed directly, not when it's imported  ---
 if __name__ == '__main__':
   print("Starting Flask server on http://0.0.0.0:5000")
@@ -47,6 +58,85 @@ SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabas
 SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M" # The API key for the Supabase project, which is used to authenticate requests to the Supabase database. This key is specific to the user's Supabase project and is required for establishing a connection to the database.
 databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY)) # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
 
+
+def startup():
+    """Startup and shutdown logic."""
+    global config, search, registry, schema_content
+    print("Starting Archivist server...")
+    
+
+    # Load config
+    config_path = Path("config/config.yaml")
+    if not config_path.exists():
+        
+        sys.exit(1)
+
+    config = Config.load(config_path)
+    print(f"Vault path: {config.vault_path.resolve()}")
+    
+    # Ensure vault directories exist
+    config.wiki_path.mkdir(parents=True, exist_ok=True)
+    config.raw_path.mkdir(parents=True, exist_ok=True)
+    config.outputs_path.mkdir(parents=True, exist_ok=True)
+    config.profiles_path.mkdir(parents=True, exist_ok=True)
+
+    # Load schema
+    if config.schema_path.exists():
+        schema_content = config.schema_path.read_text(encoding="utf-8")
+        
+    else:
+        schema_content = "No schema file found. Maintain wiki pages with clear structure."
+       
+
+    # Initialise search index
+    search = WikiSearch(
+        db_path=config._raw.get("search", {}).get("db_path", "./archivist-index.db"),
+        wiki_path=config.wiki_path,
+    )
+    if config._raw.get("search", {}).get("rebuild_on_startup", True):
+        search.rebuild()
+
+    # Initialise action registry
+    registry = ActionRegistry(config=config, search=search)
+    
+
+startup()
+
+@app.route("/ingestwiki/<id>", methods=["GET"])
+async def ingestwiki(id):
+    # Placeholder function for ingesting Wikipedia data
+    result = databaseClient.table("SavedThirdPlaces").select("*").eq("id", id).execute()
+    if not result.data:
+        return jsonify({"error": "Saved third place not found"}), 404
+
+    saved_third_place = result.data[0]
+    name=saved_third_place["name"]
+    name = name.replace(" ", "_")
+    # Need to place the file into the vault folder 
+    filename = "raw/" + name + ".json" # part of the file name Ollama can see
+    fullfilename= "vault/" + filename # where the file actually need to be stored
+    Path(fullfilename).write_text(json.dumps(saved_third_place), encoding="utf-8") # writing the file to disk
+    prompt=f"""Ingest the file {filename}. Update the index. Update the log. Update the locations folder. Update the features folder."""
+    # Load current wiki index
+    wiki_index = ""
+    if config.index_path.exists():
+        wiki_index = config.index_path.read_text(encoding="utf-8")
+    print(f"Calling AI with prompt: {prompt},wiki_index: {wiki_index[:200]}...")  # Print the first 200 characters of the wiki index for debugging
+    print(f"Schema content: {schema_content[:400]}...")  # Print the first 200 characters of the schema content for debugging
+    # Run the agent loop
+    try:
+        result: AgentResponse = await run_agent_loop(
+            user_message=prompt,
+            config= config,
+            action_handlers= registry.handlers,
+            action_descriptions= registry.descriptions,
+            schema= schema_content,
+            wiki_index=wiki_index,
+            #task_type="default",
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 
@@ -454,3 +544,5 @@ Return only valid JSON.
     )
     validation_result = response["message"]["content"]
     return jsonify({"third_place_name": third_place_name, "validation_result": json.loads(validation_result)})
+
+

@@ -40,11 +40,12 @@ schema_content: str = ""
 
 # --- Lifespan ---
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+#@asynccontextmanager
+#async def lifespan(app: FastAPI):
+def startup():
     """Startup and shutdown logic."""
     global config, search, registry, schema_content
-
+    print("Starting Archivist server...")
     logger.info("Starting Archivist server...")
 
     # Load config
@@ -54,6 +55,7 @@ async def lifespan(app: FastAPI):
         sys.exit(1)
 
     config = Config.load(config_path)
+    print(f"Vault path: {config.vault_path.resolve()}")
     logger.info(f"Vault path: {config.vault_path.resolve()}")
 
     # Ensure vault directories exist
@@ -83,41 +85,41 @@ async def lifespan(app: FastAPI):
     logger.info(f"Registered {len(registry.handlers)} actions")
 
     # Check Ollama connectivity
-    try:
-        import ollama
-        route = config.resolve_model_route("default")
-        client = ollama.AsyncClient(host=route.host)
-        models = await client.list()
-        model_names = [m.model for m in models.models] if hasattr(models, 'models') else []
-        logger.info(f"Ollama connected. Available models: {model_names[:5]}")
-    except Exception as e:
-        logger.warning(f"Could not connect to Ollama: {e}")
-        logger.warning("Server will start but chat will fail until Ollama is available")
+    #try:
+        #import ollama
+        #route = config.resolve_model_route("default")
+        #client = ollama.AsyncClient(host=route.host)
+        #models = client.list()
+       # model_names = [m.model for m in models.models] if hasattr(models, 'models') else []
+        #logger.info(f"Ollama connected. Available models: {model_names[:5]}")
+    #except Exception as e:
+        #logger.warning(f"Could not connect to Ollama: {e}")
+       # logger.warning("Server will start but chat will fail until Ollama is available")
 
-    logger.info(f"Archivist ready on http://{config.host}:{config.port}")
-    yield
+    #logger.info(f"Archivist ready on http://{config.host}:{config.port}")
+    #yield
 
     # Shutdown
-    if search:
-        search.close()
-    logger.info("Archivist shut down")
+    #if search:
+    #    search.close()
+    #logger.info("Archivist shut down")
+    print("Archivist server started successfully.")
 
 
 # --- App ---
 
-app = FastAPI(
-    title="Archivist",
-    description="Personal wiki assistant",
-    version="0.1.0",
-    lifespan=lifespan,
-)
+#app = FastAPI(
+    #title="Archivist",
+    #description="Personal wiki assistant",
+    #version="0.1.0",
+    #lifespan=lifespan,
+#)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Electron app connects from file:// or localhost
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+#app.add_middleware(
+    #CORSMiddleware,
+   #allow_origins=["*"],  # Electron app connects from file:// or localhost
+   # allow_methods=["*"],
+   #)
 
 
 # --- Request/Response Models ---
@@ -150,7 +152,7 @@ class SearchResult(BaseModel):
 
 # --- Endpoints ---
 
-@app.get("/health")
+#@app.get("/health")
 async def health():
     """Health check."""
     return {
@@ -160,7 +162,7 @@ async def health():
     }
 
 
-@app.post("/chat", response_model=ChatResponse)
+#@app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Send a message to the agent and get a response."""
     logger.info(f"Chat request: {request.message[:80]}...")
@@ -192,7 +194,7 @@ async def chat(request: ChatRequest):
     )
 
 
-@app.get("/wiki/{path:path}", response_model=WikiPageResponse)
+#@app.get("/wiki/{path:path}", response_model=WikiPageResponse)
 async def get_wiki_page(path: str):
     """Read a wiki page."""
     full_path = config.vault_path / path
@@ -205,21 +207,21 @@ async def get_wiki_page(path: str):
     return WikiPageResponse(path=path, content="", exists=False)
 
 
-@app.get("/search")
+#@app.get("/search")
 async def search_wiki(q: str, limit: int = 5):
     """Search wiki pages."""
     results = search.search(q, limit=limit)
     return {"query": q, "results": results}
 
 
-@app.get("/wiki")
+#@app.get("/wiki")
 async def list_wiki_pages(directory: str | None = None, type: str | None = None):
     """List wiki pages."""
     results = search.list_pages(directory=directory, page_type=type)
     return {"pages": results}
 
 
-@app.get("/outputs")
+#@app.get("/outputs")
 async def list_outputs():
     """List generated output files."""
     outputs = []
@@ -232,6 +234,7 @@ async def list_outputs():
             })
     return {"outputs": sorted(outputs, key=lambda x: x["modified"], reverse=True)}
 
+print("Starting Archivist server part two...")
 # --- CLI Entry Point ---
 
 def cli():
@@ -245,11 +248,11 @@ def cli():
     )
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "src.main:app",
-        host="127.0.0.1",
-        port=8420,
-        reload=True,
-    )
+#if __name__ == "__main__":
+    #import uvicorn
+    #uvicorn.run(
+    #    "src.main:app",
+    #    host="127.0.0.1",
+    #    port=8420,
+    #    reload=True,
+    #)

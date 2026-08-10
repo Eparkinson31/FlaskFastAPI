@@ -302,6 +302,7 @@ status: draft
 
     
     # --- Path Safety ---
+    #making sure all of the files that Ollama can request with tools are in the vault folder.
 
     def _is_safe_path(self, path: Path) -> bool:
         """Check that a path is within the vault."""

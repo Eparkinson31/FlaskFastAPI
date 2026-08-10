@@ -331,6 +331,7 @@ async def run_agent_loop(
 ) -> AgentResponse:
     """Execute the agent loop for a user message."""
     # Resolve model and host
+    print(f"Resolving model route for task_type: {task_type}")
     route = config.resolve_model_route(task_type)
     model = route.model
     host = route.host
