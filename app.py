@@ -270,6 +270,44 @@ def updateprofile():
     result = databaseClient.table("Profile").update(profile).eq("id",update["id"]).execute()
     return jsonify(result.data[0])  # Return the first updated profile data
 
+@app.route("/profileuploadphoto", methods=["POST"])
+def profileuploadphoto():
+    if "file" not in request.files:
+       
+        return jsonify(
+            {
+                "error": "No file supplied"
+            }
+        ), 400
+
+    image = request.files["file"]
+    orginal_filename = image.filename
+    extension = os.path.splitext(image.filename)[1]
+    filename = f"public/{uuid.uuid4()}{extension}"
+    contents = image.read()
+    
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    print(f"Uploading file to Supabase storage with filename: {filename}, extension: {extension}, mime: {mime}, original filename: {orginal_filename}")
+    print(f"File content type: {image.content_type},image: {image}, image.mimetype: {image.mimetype}, type: {type(image)}")
+    response = (
+        databaseClient
+        .storage
+        .from_("profilephotos")
+        .upload(
+            path=filename,
+            file=contents,
+            file_options={
+                "content-type": mime,
+                "upsert": False,
+            },
+        )
+    )
+
+    return jsonify(response)
+
+
+
+
 @app.route("/allprofiles", methods=["GET"]) # Creates a route for retrieving all profiles from the database, which returns a JSON response containing the list of profiles.
 def allprofiles():
     result = databaseClient.table("Profile").select("*").execute()
