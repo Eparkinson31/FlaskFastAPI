@@ -433,12 +433,13 @@ async def run_agent_loop(
                 except Exception as e:
                     result = f"Error executing {action.name}: {e}"
                     logger.error(f"Action {action.name} failed: {e}")
-
-            actions_taken.append({
+            last_action = {
                 "action": action.name,
                 "params": action.params,
                 "result_preview": str(result)[:300],
-            })
+            }
+            print(f"Action taken: {last_action}")
+            actions_taken.append(last_action)
 
             # Feed result back to LLM
             if mode == "native":

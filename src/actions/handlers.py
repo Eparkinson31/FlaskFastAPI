@@ -268,7 +268,7 @@ status: draft
 
     async def profile_read(self, name: str) -> str: 
         """Read a user profile page by name (e.g. 'alice')."""
-        full_path = self.config.profiles_path / f"{name}.md"
+        full_path = self.config.profiles_path / f"{name}.json"
         if not self._is_safe_profile_path(full_path):
             return "Error: Path outside vault"
         if not full_path.exists():
@@ -281,11 +281,11 @@ status: draft
 
     async def profile_write(self, name: str, content: str) -> str:
         """Create or overwrite a user profile page. Params: name, content."""
-        full_path = self.config.profiles_path / f"{name}.md"
+        full_path = self.config.profiles_path / f"{name}.json"
         if not self._is_safe_profile_path(full_path):
             return "Error: Path outside vault"
         full_path.write_text(content, encoding="utf-8")
-        return f"Written: profiles/{name}.md"
+        return f"Written: profiles/{name}.json"
 
 
     async def profile_list(self) -> str:
@@ -296,7 +296,7 @@ status: draft
 
         entries = []
         for item in sorted(full_path.iterdir()):
-            if item.is_file() and item.suffix == ".md":
+            if item.is_file() and item.suffix == ".json":
                 entries.append(item.stem)
         return "\n".join(entries) if entries else "No profiles found."
 

@@ -7,8 +7,4 @@ frontmatter:
 # Index
 
 ## Pubs
-- [[pub/spaniards-inn.md]]
 
-## Guidelines
-
-## Ingest Instructions
