@@ -1,10 +1,14 @@
 ---
-title: "Mile End"
-type: "location"
-last_updated: "$(datetime_now)"
+name: Mile End
+location: Bow, London E3 2DA
+pubs:
+  - [[pub_the_coborn]]
 ---
-## Overview
-A vibrant area in East London with a mix of historic and modern architecture.
+
+# Mile End
+
+## Location
+Bow, London E3 2DA
 
 ## Pubs
-- [[pub_the_half_moon]]
+- [The Coborn](wiki/pubs/pub_the_coborn.md)

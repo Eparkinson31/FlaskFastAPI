@@ -1,31 +1,20 @@
 ---
-frontmatter:
-  name: The Coach Makers Arms
-  location: Marylebone
-  last_modified: 2026-06-10T13:56:24.896394+00:00
-  type: pub
-  id: 5
-  address: 88 Marylebone Ln, London W1U 2PY
-  longitude: -0.150633821789166
-  latitude: 51.5171653742104
-  features:
-    tags:
-      - sunday roast
-      - outdoor seating
-      - hawkstone lager
-      - Guinness
-      - upstairs dining room
+id: "pub_the_coach_makers_arms"
+title: "The Coach Makers Arms"
+location: "[[location_marylebone]]"
+borough: "London Borough of Westminster"
+coordinates: "51.517165° N, -0.150633° W"
+last_updated: "2026-07-28"
 ---
 
 # The Coach Makers Arms
 
-**Location:** Marylebone
-
-**Address:** 88 Marylebone Ln, London W1U 2PY
-
-**Features:**
+## Features
 - Sunday roast
 - Outdoor seating
 - Hawkstone lager
 - Guinness
 - Upstairs dining room
+
+## Address
+88 Marylebone Ln, London W1U 2PY

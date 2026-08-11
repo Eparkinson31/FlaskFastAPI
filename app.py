@@ -138,6 +138,43 @@ async def ingestwiki(id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/ingestall", methods=["GET"])
+async def ingestall():
+    # Placeholder function for ingesting Wikipedia data
+    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
+    if not result.data:
+        return jsonify({"error": "No saved third places found"}), 404
+    for saved_third_place in result.data:
+        name=saved_third_place["name"]
+        name = name.replace(" ", "_")
+        # Need to place the file into the vault folder 
+        filename = "raw/" + name + ".json" # part of the file name Ollama can see
+        fullfilename= "vault/" + filename # where the file actually need to be stored
+        Path(fullfilename).write_text(json.dumps(saved_third_place), encoding="utf-8") # writing the file to disk
+        prompt=f"""Ingest the file {filename}. Update the index. Update the log. Update the locations folder. Update the features folder."""
+        # Load current wiki index
+        wiki_index = ""
+        if config.index_path.exists():
+            wiki_index = config.index_path.read_text(encoding="utf-8")
+        print(f"Calling AI with prompt: {prompt},wiki_index: {wiki_index[:200]}...")  # Print the first 200 characters of the wiki index for debugging
+        print(f"Schema content: {schema_content[:400]}...")  # Print the first 200 characters of the schema content for debugging
+        # Run the agent loop
+        try:
+            result: AgentResponse = await run_agent_loop(
+                user_message=prompt,
+                config= config,
+                action_handlers= registry.handlers,
+                action_descriptions= registry.descriptions,
+                schema= schema_content,
+                wiki_index=wiki_index,
+                #task_type="default",
+            )
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    return jsonify({"status": "Ingested all saved third places"})
+
+
+
 
 
 @app.route("/chat", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.

@@ -1,39 +1,41 @@
 ---
-id: "pub_the_holly_bush"
-title: "The Holly Bush"
-type: "pub"
-location: "[[location_hampstead]]"
-borough: "London Borough of Camden"
-established: null
-listed_status: null
-closest_station: null
-coordinates: null
-last_updated: "$(datetime_now)"
+name: The Holly Bush
+id: 27
+location: Hampstead
+address: 22 Holly Mount, Hampstead Gate, London NW3 6SG
+latitude: 51.5578785570196
+longitude: -0.179312471104595
+features:
+  tags:
+    - live music
+    - dog friendly
+    - cask ales
+    - fireplace
+    - outdoor space
+    - sunday roast
+    - venison
+    - yorkshire pudding
+    - old pub
+    - cosy pub
+    - lemon sole
+last_updated: 2026-06-11T13:44:16.112816+00:00
 ---
 
-# The Holly Bush
+### Overview
+The Holly Bush is a pub in Hampstead, offering live music, dog-friendly areas, and a variety of dishes including venison and Yorkshire pudding. It features a fireplace, outdoor space, and a Sunday roast menu.
 
-## 1. Executive Summary
-A traditional pub in Hampstead known for its live music, cask ales, and seasonal Sunday roasts.
+### Location
+22 Holly Mount, Hampstead Gate, London NW3 6SG
 
-## 2. History & Lore
-Established in the early 20th century as a family-run establishment, retaining its original wooden beams and fireplace.
-
-## 3. Architectural & Design Features
-- **Layout:** Front bar with outdoor seating, small indoor space.
-- **Interior:** Exposed brick walls, original fireplace, and a cozy ambiance.
-- **Key Artifacts:** Vintage pub fixtures and a historic pub sign.
-
-## 4. Beverage & Food Menu
-- **Tied or Independent:** Independent
-- **Core Beer Offering:** Focus on cask ales, including local guest beers.
-- **Food style:** Traditional pub fare with a Sunday roast menu featuring venison and yorkshire pudding.
-
-## 5. Logistics & Atmosphere
-- **Vibe:** Cosy, family-friendly, with live music on weekends.
-- **Peak Times:** Busy during lunch hours and Sunday roasts.
-- **Accessibility Access:** Limited wheelchair access due to historic building constraints.
-
-## 6. References & Sources
-- Data compiled from `raw/TheHollyBush.json`.
-- Verification via London Borough of Camden heritage records.
+### Features
+- Live music
+- Dog friendly
+- Cask ales
+- Fireplace
+- Outdoor space
+- Sunday roast
+- Venison
+- Yorkshire pudding
+- Old pub
+- Cosy pub
+- Lemon sole

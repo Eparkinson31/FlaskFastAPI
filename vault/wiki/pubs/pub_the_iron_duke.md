@@ -1,39 +1,29 @@
 ---
-id: "pub_the_iron_duke"
-title: "The Iron Duke"
-type: "pub"
-location: "[[location_mayfair]]"
-borough: "City of Westminster"
+id: 10
+name: The Iron Duke
+location: [[location_mayfair]]
+borough: City of Westminster
 established: null
 listed_status: null
-closest_station: "[[concept_tube_mayfair]]"
-coordinates: "51.5183° N, 0.1084° W"
-last_updated: "2026-07-28"
+coordinates: 51.5127° N, -0.1459° W
+last_updated: 2026-06-10T14:23:11.553982+00:00
 ---
 
 # The Iron Duke
 
-## 1. Executive Summary
-A homely pub in Mayfair with outdoor seating, historic charm, and a big range of beers. Known for its mulled wine and old-world ambiance.
+## Executive Summary
+A homely pub in Mayfair with a historic feel, offering a big range of beers, outdoor seating, and mulled wine.
 
-## 2. History & Lore
-Established as a traditional pub with ties to Fuller's brewery. Maintains a historic feel while offering modern beer selections.
+## History & Lore
+Established as a traditional pub, The Iron Duke retains its historic charm while providing modern comforts.
 
-## 3. Architectural & Design Features
-- **Layout:** Front bar with outdoor seating area.
-- **Interior:** Warm, rustic decor with historic detailing.
-- **Key Artifacts:** Original wooden beams and vintage signage.
+## Beverage & Food Menu
+- **Beers**: Fullers brewery taps with a wide selection.
+- **Specials**: Mulled wine available during colder months.
 
-## 4. Beverage & Food Menu
-- **Tied or Independent:** Independent (Managed by Fuller's).
-- **Core Beer Offering:** Extensive range of cask ales and bottled beers, including Fuller's own brands.
-- **Food style:** Traditional pub fare with a focus on hearty dishes.
+## Logistics & Atmosphere
+- Outdoor seating available.
+- Historic interior with a warm, welcoming atmosphere.
 
-## 5. Logistics & Atmosphere
-- **Vibe:** Friendly, historic, and welcoming.
-- **Peak Times:** Popular for lunch and weekend evenings.
-- **Accessibility Access:** Moderate; some steps at entrance.
-
-## 6. References & Sources
-- Data compiled from `raw/TheIronDuke.json`.
-- Verification via Mayfair local listings.
+## Contact
+Address: 11 Avery Row, London W1K 4AN

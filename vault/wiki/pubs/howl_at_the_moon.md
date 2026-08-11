@@ -1,0 +1,1 @@
+---\nlast_updated: 2026-05-05\n---\n\n## Description\nA mysterious lunar-themed pub with a twist.\n\n## Location\nKilbrun Street, Moonbase.\n\n## Hours\nOpen 24/7.\n\n## Atmosphere\nOtherworldly and enchanting.\n\n## Menu\n- Moonshine\n- Meteorite Meatloaf\n- Comet Cocktails\n\n## Notes\nAlways check the stars before entering.\n
