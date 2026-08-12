@@ -134,7 +134,7 @@ async def ingestwiki(id):
             action_descriptions= registry.descriptions,
             schema= schema_content,
             wiki_index=wiki_index,
-            #task_type="default",
+            task_type="wiki_ingest",
         )
         return jsonify(result)
     except Exception as e:
@@ -169,7 +169,7 @@ async def ingestall():
                 action_descriptions= registry.descriptions,
                 schema= schema_content,
                 wiki_index=wiki_index,
-                #task_type="default",
+                task_type="wiki_ingest",
             )
         except Exception as e:
             return jsonify({"error": str(e)}), 500

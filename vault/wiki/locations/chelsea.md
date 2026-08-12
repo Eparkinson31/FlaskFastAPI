@@ -1,3 +1,0 @@
-- **The Pig's Ear** (Chelsea) - 35 Old Church St, London SW3 5BS
-- Type: Pub
-- Features: Cocktails, bar games, gastro pub, fish and chips, Yorkshire pudding, cider, sorbet, champagne, sparkling wine, Sunday roast, croquettes, pork chop, pie, oysters, scallops, roast beef

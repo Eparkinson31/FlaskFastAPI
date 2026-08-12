@@ -1,8 +1,9 @@
 ---
-timestamp: 2026-06-11T13:47:26.447965+00:00
-action: create
-pages:
-- wiki/pubs/spaniards-inn.md
-- wiki/index.md
-source: raw/Spaniards_Inn.json
+title: Log
 ---
+type: log
+
+# Log
+
+## Recent Additions
+- 2026-08-12 13:07:25: Added pub 'The Lucky Anchor' (Deptford) with features: outdoor seating, cask ales, bottle selection, keg beers, craft beers, beer list, strong ales, spirits selection. Created wiki/pubs/pub_the_lucky_anchor.md and updated wiki/index.md

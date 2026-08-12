@@ -335,7 +335,10 @@ async def run_agent_loop(
     route = config.resolve_model_route(task_type)
     model = route.model
     host = route.host
-
+    print(f"Resolved model route: {model} @ {host}")
+    if task_type == "wiki_ingest":
+        model = "qwen3:32b-q4_K_M"
+        print(f"override: {model} @ {host}")
     # Detect mode
     mode = await detect_mode(model, host, forced=config.llm.mode)
     logger.info(f"Using model={model}, mode={mode}")

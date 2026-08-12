@@ -1,1 +1,0 @@
----\ncreated_at: 2026-08-07T12:07:15.722328+00:00\ntitle: The Car\ntype: pub\nlocation: location_abbey_wood\nfeatures:\n  - feature_alcohol_free_beer\n---\n\n## Overview\nA third place pub in Abbey Wood with alcohol free beer options.\n\n## Address\n(Not provided in source)\n\n## Image\n![The Car](thirdplacephotos/public/dfd82f99-4c1e-4d8a-804e-c0b69bac508c.jpeg)

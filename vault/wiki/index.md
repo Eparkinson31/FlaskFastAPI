@@ -1,10 +1,12 @@
 ---
-frontmatter:
-  title: Index
-  type: index
+id: "index"
+title: "London Pub Index"
+type: "index"
 ---
-
-# Index
+# London Pub Index
 
 ## Pubs
 
+## Locations
+
+## Features
