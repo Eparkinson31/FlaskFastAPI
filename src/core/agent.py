@@ -336,9 +336,9 @@ async def run_agent_loop(
     model = route.model
     host = route.host
     print(f"Resolved model route: {model} @ {host}")
-    if task_type == "wiki_ingest":
-        model = "qwen3:32b-q4_K_M"
-        print(f"override: {model} @ {host}")
+    #if task_type == "wiki_ingest":
+    #model = "qwen3:32b-q4_K_M"
+    #    print(f"override: {model} @ {host}")
     # Detect mode
     mode = await detect_mode(model, host, forced=config.llm.mode)
     logger.info(f"Using model={model}, mode={mode}")
@@ -368,18 +368,21 @@ async def run_agent_loop(
 
     for iteration in range(max_iterations):
         logger.info(f"Agent loop iteration {iteration + 1}")
-
+        num_ctx = config.llm.context_length
+        # num_ctx = 5000  # override for now, until we can get the context length working properly
+        print(f"num_ctx: {config.llm.context_length}, temperature: {config.llm.temperature}, new num_ctx: {num_ctx}")
+        
         # Call LLM the main loop 
         chatarguments = {
             "model": model,
             "messages": messages,
-            "options": {"temperature": config.llm.temperature},
+            "options": {"temperature": config.llm.temperature,"num_ctx": num_ctx},
         }
         if tools:
             chatarguments["tools"] = tools
 
         response = await client.chat(**chatarguments)
-
+        print(f"Ollama response received: {response}")
         # The ollama library returns a ChatResponse object
         message = response.message
 

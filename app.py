@@ -1,3 +1,4 @@
+import datetime
 import profile
 from pydoc import html
 from pyexpat.errors import messages
@@ -143,23 +144,42 @@ async def ingestwiki(id):
 @app.route("/ingestall", methods=["GET"])
 async def ingestall():
     # Placeholder function for ingesting Wikipedia data
+    indexPage = """---
+id: "index"
+title: "London Pub Index"
+type: "index"
+---
+
+# London Pub Index
+
+## Pubs 
+"""
     result = databaseClient.table("SavedThirdPlaces").select("*").execute()
     if not result.data:
         return jsonify({"error": "No saved third places found"}), 404
     for saved_third_place in result.data:
         name=saved_third_place["name"]
         name = name.replace(" ", "_")
+        name = name.lower()
+        id= "pub_" + name
+        path = "pubs/pub_" + name + ".md"
+        jsondata = json.dumps(saved_third_place)
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         # Need to place the file into the vault folder 
         filename = "raw/" + name + ".json" # part of the file name Ollama can see
         fullfilename= "vault/" + filename # where the file actually need to be stored
         Path(fullfilename).write_text(json.dumps(saved_third_place), encoding="utf-8") # writing the file to disk
-        prompt=f"""Ingest the file {filename}. Update the index. Update the log. Update the locations folder. Update the features folder."""
+        prompt=f"""Ingest the following information: {jsondata}. Using this date and time: {now}.
+        Use the wiki id {id}.To create a Type A pub profile page. 
+        Use the wiki_write tool to save the wiki markdown page as {path}. 
+        Return the summary of the pub."""
+
         # Load current wiki index
         wiki_index = ""
         if config.index_path.exists():
             wiki_index = config.index_path.read_text(encoding="utf-8")
         print(f"Calling AI with prompt: {prompt},wiki_index: {wiki_index[:200]}...")  # Print the first 200 characters of the wiki index for debugging
-        print(f"Schema content: {schema_content[:400]}...")  # Print the first 200 characters of the schema content for debugging
+        #print(f"Schema content: {schema_content[:400]}...")  # Print the first 200 characters of the schema content for debugging
         # Run the agent loop
         try:
             result: AgentResponse = await run_agent_loop(
@@ -173,6 +193,10 @@ async def ingestall():
             )
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        indexPage += f"- [[{id}]] - {result.text}\n"
+        # Write the index page to the vault
+        indexPath = config.vault_path / "wiki" / "index.md"
+        Path(indexPath).write_text(indexPage, encoding="utf-8")
     return jsonify({"status": "Ingested all saved third places"})
 
 

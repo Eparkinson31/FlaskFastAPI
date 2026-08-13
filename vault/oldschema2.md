@@ -27,9 +27,11 @@ id: "pub_ye_olde_mitre"
 title: "Ye Olde Mitre"
 type: "pub"
 location: "Holborn"
+established: 1546
+listed_status: "Grade II*"
 longitude: -0.108129
 latitude: 51.521754
-last_updated: "2026-07-28 11:00:00"
+last_updated: 2026-07-28 11:00:00
 ---
 
 # Ye Olde Mitre
@@ -72,9 +74,25 @@ type: "index"
 
 To maintain high data integrity, the LLM curation agent must run the following verification checks during every compilation loop:
 
+1. **Naming Convention:** All internal system IDs and markdown filenames must be entirely lowercase, using underscores instead of spaces (e.g., `pub_the_black_friar.md`).
+2. **Indexing Requirement:** The index page must contain links to all pubs. Updates to the index page must preserve existing pubs. 
+
+
+---
+
 ## 4. Repository Maintenance Rules
 
 The wiki must always remain internally consistent. Any operation that creates, renames, deletes, or modifies a page must also update all affected index files. 
 Do not copy example content from the schema into real pages. 
+
+### 4.1 Mandatory Update Rule
+
+Whenever any source is ingested, modified, renamed, or deleted, the LLM must determine whether any repository index pages require updating.
+
+The following pages are mandatory maintenance targets:
+
+- `wiki/index.md`
+
+These updates are part of the same operation and must never be skipped.
 
 ---

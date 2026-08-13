@@ -16,7 +16,7 @@ llm:
   mode: "auto"                 # "auto" | "native" | "react"
   max_iterations: 20           # Max action loop iterations per request
   temperature: 0.1             # Low for reliable structured output
-  context_length: 32768
+  context_length: 5000
 
 models:
   local:
@@ -28,11 +28,12 @@ models:
     host: "http://localhost:11434"
 
   remote:
-    heavy: "qwen3:32b-q4_K_M"
+    #heavy: "qwen3:32b-q4_K_M"
+    heavy: "qwen3:8b"  # Update with your remote model if you have one
     host: "http://127.0.0.1:11434"  # Update with your desktop IP if you use one
     # Left disabled so a student machine without the big model still works:
     # any route that asks for "remote.*" falls back to local.default.
-    enabled: false
+    enabled: true
 
   routing:
     wiki_query: "local.quick"
