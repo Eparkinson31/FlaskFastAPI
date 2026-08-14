@@ -32,7 +32,7 @@ from src.core.agent import run_agent_loop, AgentResponse
 from src.core.config import Config
 from src.core.search import WikiSearch
 from src.actions.handlers import ActionRegistry
-
+import re
 
 app = Flask(__name__)
 cors = CORS(app)
@@ -200,28 +200,117 @@ type: "index"
     return jsonify({"status": "Ingested all saved third places"})
 
 
-@app.route("/chat", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.
-async def chat(): # Defines the chat function that handles POST requests to the "/chat" endpoint. This function retrieves the conversation history from the request body, calls the AI model with that history, and returns the updated conversation history including the AI's response.
+@app.route("/createindex", methods=["GET"])
+async def create_index():
+    # Placeholder function for ingesting Wikipedia data
+    indexPage = """---
+id: "index"
+title: "London Pub Index"
+type: "index"
+---
+
+# London Pub Index
+
+## Pubs 
+"""
+    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
+    if not result.data:
+        return jsonify({"error": "No saved third places found"}), 404
+    for saved_third_place in result.data:
+        name=saved_third_place["name"]
+        name = name.replace(" ", "_")
+        name = name.lower()
+        id= "pub_" + name
+        path = "pubs/pub_" + name + ".md"
+
+        indexPage += f"- [[{id}]] - {saved_third_place['name']}\n"
+        # Write the index page to the vault
+    indexPath = config.vault_path / "wiki" / "index.md"
+    Path(indexPath).write_text(indexPage, encoding="utf-8")
+    return jsonify({"status": "Ingested all saved third places"})
+
+ #indexPage += f"- [[{id}]] - {saved_third_place['name']} - location: {saved_third_place['location']}, address: {saved_third_place['address']}, features: {', '.join(saved_third_place['features']['tags'])}\n"
+class ThirdPlaceSuggestion(BaseModel):
+    id: int
+    name: str
+    location: str
+    summary: str
+    longitude: float
+    latitude: float
+
+class ThirdPlaceSuggestionList(BaseModel):
+    suggestions: list[ThirdPlaceSuggestion]
+
+@app.route('/structuredsuggestthirdplaces/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
+def structuredsuggestthirdplaces(profile_id):
+    # Fetch the profile from the database using the provided profile_id
+    result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
+    if not result.data:
+        return jsonify({"error": "Profile not found"}), 404
+
+    profile = result.data[0]
+    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
+    all_saved_third_places = result.data
+    prompt = f"""Given the user's profile: {profile}, 
+    and this list of third places: {all_saved_third_places}, 
+    suggest three third places from the list they might like to visit."""
+    response = client.chat (
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant that suggests third places based on user profiles."},
+            {"role": "user", "content": prompt}],
+        format= ThirdPlaceSuggestionList.model_json_schema(),
+    )
+    suggestions = ThirdPlaceSuggestionList.model_validate_json(response["message"]["content"])
+    return jsonify(suggestions.model_dump())  # Return the list of suggested third places as JSON
+
+@app.route("/chat/<profile_id>", methods=["POST"]) # Creates a route for handling chat requests, which takes the conversation history as input and returns the AI's response based on that history.
+async def chat(profile_id): # Defines the chat function that handles POST requests to the "/chat" endpoint. This function retrieves the conversation history from the request body, calls the AI model with that history, and returns the updated conversation history including the AI's response.
     conversation_history = request.get_json() # Retrieves the conversation history from the request body, which is expected to be a JSON array of messages representing the conversation between the user and the AI model.
+    if conversation_history[0]["content"]== "NEW":
+        result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
+        if not result.data:
+            return jsonify({"error": "Profile not found"}), 404
+        
+        profile = result.data[0]
+        result = databaseClient.table("SavedThirdPlaces").select("name","location","address","features").execute()
+        all_saved_third_places = result.data
+        conversation_history[0]["content"] = f"""You are a careful local assistant. 
+          Given the user's profile: {profile}, 
+          and this list of pubs: {all_saved_third_places}. 
+          You are helping a user answer questions.
+          When returning information about a pub, include a summary.
+          Keep in mind their preferences when recommending a pub. Never invent file contents about pubs."""
+    last_user_message = conversation_history[-1]["content"] if conversation_history else ""
+    if "@" in last_user_message:
+        referenced_user = re.search(r'@(\w+)', last_user_message).group(1)
+        #referenced_user = last_user_message.split("@")[1].strip()
+        print(f"Detected user reference: {referenced_user}")
+        result = databaseClient.table("Profile").select("*").eq("name", referenced_user).execute()
+        if not result.data:
+            return jsonify({"error": "Referenced user not found"}), 404
+        referenced_profile = result.data[0]
+        conversation_history[0]["content"] += f""" and the friends user profile: {referenced_profile}"""
     print(conversation_history)
-   # response = client.chat( 
-   # model=MODEL, messages=conversation_history) 
-    wiki_index = ""
-    if config.index_path.exists():
-        wiki_index = config.index_path.read_text(encoding="utf-8")
-    try:
-        result: AgentResponse = await run_agent_loop(
-            user_message= str(conversation_history),
-            config= config,
-            action_handlers= registry.handlers,
-            action_descriptions= registry.descriptions,
-            schema= schema_content,
-            wiki_index= wiki_index,
-            #task_type="default",
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    conversation_history.append({"role": "assistant", "content": result.text}) #add the AI's response to the conversation history
+    response = client.chat( 
+        options={"temperature": 0.2,"num_ctx": 24000},
+        model=MODEL, messages=conversation_history)
+    print(response)
+   # wiki_index = ""
+    #if config.index_path.exists():
+    #    wiki_index = config.index_path.read_text(encoding="utf-8")
+   # try:
+      #  result: AgentResponse = await run_agent_loop(
+       #     user_message= str(conversation_history),
+       #     config= config,
+       #     action_handlers= registry.handlers,
+       #     action_descriptions= registry.descriptions,
+        #    schema= schema_content,
+        ##  task_type="wiki_query"
+   #    #)
+   # #except Exception as e:
+    #    return jsonify({"error": str(e)}), 500
+    conversation_history.append({"role": "system", "content": response["message"]["content"]}) #add the AI's response to the conversation history
     print(conversation_history)
     return jsonify(conversation_history)
 
@@ -489,8 +578,8 @@ def suggestthirdplaces(profile_id):
 
 client = ollama.Client()
 
-MODEL = "qwen3-coder:30b"
-
+#MODEL = "qwen3-coder:30b"
+MODEL = "qwen3:8b"
 DATA_DIR = "data/"
 
 
@@ -610,39 +699,6 @@ def callai(user_prompt: str) -> str: # A function that takes a user prompt as in
     print(response) 
     return response["message"]["content"]
 
-class ThirdPlaceSuggestion(BaseModel):
-    id: int
-    name: str
-    location: str
-    summary: str
-    longitude: float
-    latitude: float
-
-class ThirdPlaceSuggestionList(BaseModel):
-    suggestions: list[ThirdPlaceSuggestion]
-
-@app.route('/structuredsuggestthirdplaces/<profile_id>', methods=['GET']) # Creates a route for suggesting pubs based on the user's profile, which takes the profile ID as a URL parameter and returns a list of suggested pubs.
-def structuredsuggestthirdplaces(profile_id):
-    # Fetch the profile from the database using the provided profile_id
-    result = databaseClient.table("Profile").select("*").eq("id", profile_id).execute()
-    if not result.data:
-        return jsonify({"error": "Profile not found"}), 404
-
-    profile = result.data[0]
-    result = databaseClient.table("SavedThirdPlaces").select("*").execute()
-    all_saved_third_places = result.data
-    prompt = f"""Given the user's profile: {profile}, 
-    and this list of third places: {all_saved_third_places}, 
-    suggest three third places from the list they might like to visit."""
-    response = client.chat (
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that suggests third places based on user profiles."},
-            {"role": "user", "content": prompt}],
-        format= ThirdPlaceSuggestionList.model_json_schema(),
-    )
-    suggestions = ThirdPlaceSuggestionList.model_validate_json(response["message"]["content"])
-    return jsonify(suggestions.model_dump())  # Return the list of suggested third places as JSON
    
 @app.route('/validatethirdplacename', methods=['POST']) # Creates a route for validating a pub name, which takes the pub name as a URL parameter and returns whether the pub name is valid or not.
 def validatethirdplacename():

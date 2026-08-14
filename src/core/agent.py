@@ -301,6 +301,52 @@ Actions:
 
     return base
 
+def build_query_prompt(
+    schema: str,
+    wiki_index: str,
+    mode: str,
+    action_descriptions: dict[str, str],
+) -> str:
+    """Build the system prompt for the agent."""
+    base = f"""You are Archivist, a personal wiki assistant. You answer questions by consulting a
+knowledge wiki on request.
+
+
+## Current Wiki Index
+{wiki_index}
+
+## Guidelines
+- Read the wiki before answering questions — your knowledge comes from the wiki.
+- When answering questions, check the wiki for relevant context first.
+- Be concise in your responses. The human values efficiency.
+- Use British English.
+- If a question can be answered from the wiki, use wiki_search or wiki_read first.
+- If the user asks about something not in the wiki, answer from general knowledge.
+  
+"""
+
+    if mode == "react":
+        actions_list = "\n".join(
+            f"- {name} — {desc}"
+            for name, desc in action_descriptions.items()
+        )
+        base += f"""
+## Available Actions
+
+To use an action, output it in this exact format:
+
+<action>ACTION_NAME</action>
+<params>{{"key": "value"}}</params>
+
+After each action, you will receive the result and can continue.
+Chain multiple actions as needed. When done, respond normally without tags.
+
+Actions:
+{actions_list}
+"""
+
+    return base
+
 
 # --- Agent Loop ---
 
@@ -344,13 +390,21 @@ async def run_agent_loop(
     logger.info(f"Using model={model}, mode={mode}")
 
     # Build system prompt
-    system_prompt = build_system_prompt(
-        schema=schema,
-        wiki_index=wiki_index,
-        mode=mode,
-        action_descriptions=action_descriptions,
-    )
-
+    if task_type == "wiki_query":
+        system_prompt = build_query_prompt(
+            schema=schema,
+            wiki_index=wiki_index,
+            mode=mode,
+            action_descriptions=action_descriptions,
+        )
+    else:
+        system_prompt = build_system_prompt(
+            schema=schema,
+            wiki_index=wiki_index,
+            mode=mode,
+            action_descriptions=action_descriptions,
+        )
+    print(f"System prompt: {system_prompt}")
     # Build messages
     messages = [{"role": "system", "content": system_prompt}]
     if conversation_history:
