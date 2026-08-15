@@ -13,7 +13,8 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for,Re
 from bs4 import BeautifulSoup
 #import asyncio
 #from playwright.async_api import async_playwright
-from supabase import create_client, Client
+import httpx
+from supabase import ClientOptions, create_client, Client
 import json
 import sys
 from numpy import rint
@@ -57,9 +58,15 @@ if __name__ == '__main__':
   print("Starting Flask server on http://0.0.0.0:5000")
   app.run(host='0.0.0.0', port=5000, debug=True)
 
+
 SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabase project, which is used to connect to the Supabase database. This URL is specific to the user's Supabase project and is required for establishing a connection to the database.
 SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M" # The API key for the Supabase project, which is used to authenticate requests to the Supabase database. This key is specific to the user's Supabase project and is required for establishing a connection to the database.
-databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY)) # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
+databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY), # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
+    options=ClientOptions(
+        storage_client_timeout=300,  # Overrides the read timeout specifically for storage
+        postgrest_client_timeout=30             # Keeps normal DB queries standard
+    )
+)
 
 
 def startup():
@@ -237,6 +244,7 @@ class ThirdPlaceSuggestion(BaseModel):
     summary: str
     longitude: float
     latitude: float
+    address: str
 
 class ThirdPlaceSuggestionList(BaseModel):
     suggestions: list[ThirdPlaceSuggestion]
