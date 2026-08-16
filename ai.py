@@ -5,7 +5,7 @@ from urllib import response
 import ollama
 #from supabase_functions import create_client
 
-
+# --- Early attempt to create a ground up LLM wiki ---
 
 client = ollama.Client()
 
