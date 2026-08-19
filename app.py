@@ -59,8 +59,8 @@ SUPABASE_URL="https://egvksfgiyhysawrkzitn.supabase.co" # The URL of the Supabas
 SUPABASE_KEY="sb_publishable_C73oNdD1-L1ehsnRlIdl0w_EHoqX29M" # The API key for the Supabase project, which is used to authenticate requests to the Supabase database. This key is specific to the user's Supabase project and is required for establishing a connection to the database.
 databaseClient = create_client((SUPABASE_URL),(SUPABASE_KEY), # The Supabase client is created using the provided URL and API key, allowing the application to interact with the Supabase database for performing various operations such as querying, inserting, updating, and deleting data.
     options=ClientOptions(
-        storage_client_timeout=300,  # Overrides the read timeout specifically for storage
-        postgrest_client_timeout=30             # Keeps normal DB queries standard
+        storage_client_timeout=900,  # Overrides the read timeout specifically for storage
+        postgrest_client_timeout=90             # Keeps normal DB queries standard
     )
 )
 
